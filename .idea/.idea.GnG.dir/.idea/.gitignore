@@ -1,0 +1,25 @@
+<<<<<<< HEAD
+﻿# Default ignored files
+=======
+# Default ignored files
+>>>>>>> OskarTest
+/shelf/
+/workspace.xml
+# Rider ignored files
+/contentModel.xml
+<<<<<<< HEAD
+/projectSettingsUpdater.xml
+/.idea.GnG.iml
+/modules.xml
+=======
+/.idea.GnG.iml
+/modules.xml
+/projectSettingsUpdater.xml
+>>>>>>> OskarTest
+# Ignored default folder with query files
+/queries/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
