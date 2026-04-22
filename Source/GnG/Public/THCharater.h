@@ -95,12 +95,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Weapons")
 	FName SpawnerAttachSocket = NAME_None;
 
-	// Optional second starting weapon for slot 2.
-	// Optional second weapon to pre-populate slot 2 at BeginPlay.
+	// Starting weapon for hotbar slot 2.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
 	TSubclassOf<AProjectile_Base> DefaultSecondaryWeaponClass;
 
-	// TEMP TESTING: remove this property and key 3 binding when reverting the hotbar back to 2 slots.
+	// Starting weapon for hotbar slot 3.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
 	TSubclassOf<AProjectile_Base> DefaultTertiaryWeaponClass;
 
@@ -111,10 +110,6 @@ public:
 	// Runtime hotbar manager that owns slot state and pushes weapon changes to the spawner.
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Hotbar")
 	AWeaponselector* WeaponSelector;
-
-	// Pickup entry point used by Blueprints to add or replace weapons in the character hotbar.
-	UFUNCTION(BlueprintCallable, Category = "Hotbar")
-	bool AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass);
 
 	// Selects a hotbar slot by index and updates the spawner's projectile class.
 	UFUNCTION(BlueprintCallable, Category = "Hotbar")

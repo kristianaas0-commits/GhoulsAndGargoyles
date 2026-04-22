@@ -96,13 +96,11 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 
 	if (WeaponSelector)
 	{
-		TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass = ALanceCPP::StaticClass();
-		if (Spawner && Spawner->ProjectileActor)
-		{
-			DefaultPrimaryWeaponClass = Spawner->ProjectileActor;
-		}
-		WeaponSelector->InitializeWeaponSelector(Spawner, DefaultPrimaryWeaponClass, DefaultSecondaryWeaponClass);
-		WeaponSelector->AddWeaponToHotbar(DefaultTertiaryWeaponClass);
+		WeaponSelector->InitializeWeaponSelector(
+			Spawner,
+			ALanceCPP::StaticClass(),
+			DefaultSecondaryWeaponClass,
+			DefaultTertiaryWeaponClass);
 	}
 }
 
@@ -264,11 +262,6 @@ void AJarl_ThirdPersonCharacter_CPP::SelectTertiaryWeapon()
 void AJarl_ThirdPersonCharacter_CPP::UpdateScore(int32 Amount)
 {
 	Score += Amount;
-}
-
-bool AJarl_ThirdPersonCharacter_CPP::AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass)
-{
-	return WeaponSelector ? WeaponSelector->AddWeaponToHotbar(WeaponClass) : false;
 }
 
 bool AJarl_ThirdPersonCharacter_CPP::SelectWeaponSlot(int32 SlotIndex)

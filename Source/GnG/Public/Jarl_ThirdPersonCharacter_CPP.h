@@ -117,9 +117,6 @@ public:
 	void UpdateScore(int32 Amount);
 
 	UFUNCTION(BlueprintCallable, Category = "Hotbar")
-	bool AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass);
-
-	UFUNCTION(BlueprintCallable, Category = "Hotbar")
 	bool SelectWeaponSlot(int32 SlotIndex);
 
 	UFUNCTION(BlueprintPure, Category = "Hotbar")

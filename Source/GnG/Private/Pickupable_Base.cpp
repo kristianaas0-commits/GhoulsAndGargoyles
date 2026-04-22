@@ -7,7 +7,6 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Jarl_ThirdPersonCharacter_CPP.h"
-#include "Projectile_Base.h"
 
 // Sets default values
 APickupable_Base::APickupable_Base()
@@ -34,7 +33,7 @@ APickupable_Base::APickupable_Base()
 	// Only the pawn channel should trigger collection.
 	PickupBox->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	PickupBox->SetGenerateOverlapEvents(true);
-	// Route overlap events into the shared reward dispatcher below.
+	// Route overlap events into the score pickup handler below.
 	PickupBox->OnComponentBeginOverlap.AddDynamic(this, &APickupable_Base::OnPlayerEnterPickupBox);
 	
 }
@@ -63,23 +62,7 @@ void APickupable_Base::OnPlayerEnterPickupBox(UPrimitiveComponent* OverlappedCom
 		return;
 	}
 
-	// Each pickup instance decides which reward path it uses through PickupRewardType.
-	bool bWasPickedUp = false;
-	switch (PickupRewardType)
-	{
-	case EPickupRewardType::Score:
-		bWasPickedUp = HandleScorePickup(PlayerCharacter);
-		break;
-	case EPickupRewardType::Weapon:
-		bWasPickedUp = HandleWeaponPickup(PlayerCharacter);
-		break;
-	default:
-		break;
-	}
-
-	// Only destroy the pickup if the reward was actually granted.
-	// This matters for weapon pickups, because AddWeaponToHotbar can fail if the weapon class is invalid.
-	if (bWasPickedUp)
+	if (HandleScorePickup(PlayerCharacter))
 	{
 		Destroy();
 	}
@@ -95,16 +78,5 @@ bool APickupable_Base::HandleScorePickup(AJarl_ThirdPersonCharacter_CPP* PlayerC
 	// Score handling stays centralized in the player class so HUD or future score-side effects stay in one place.
 	PlayerCharacter->UpdateScore(ScoreAmount);
 	return true;
-}
-
-bool APickupable_Base::HandleWeaponPickup(AJarl_ThirdPersonCharacter_CPP* PlayerCharacter)
-{
-	if (!PlayerCharacter || !WeaponClass)
-	{
-		return false;
-	}
-
-	// The player owns the hotbar and weapon selection state, so pickups ask the player to grant the weapon.
-	return PlayerCharacter->AddWeaponToHotbar(WeaponClass);
 }
 
