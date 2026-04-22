@@ -3,11 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/HitResult.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Sound/SoundBase.h"
 #include "Projectile_Base.generated.h"
 
-struct FHitResult;
 class UPrimitiveComponent;
 class UBoxComponent;
 class UStaticMeshComponent;
@@ -53,4 +54,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float Damage = 25.f;
 
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	USoundBase* HitSound = nullptr;
+	
 };

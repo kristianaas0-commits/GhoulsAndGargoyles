@@ -1,20 +1,17 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
-
 #include "CPP_EnemySpawner.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
-#include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerController.h"
 
-#include "CPP_EnemySpawner.h"
 // Sets default values
 ACPP_EnemySpawner::ACPP_EnemySpawner()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	
-	
-
+	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
+	SetRootComponent(StaticMesh);
 }
 
 // Called when the game starts or when spawned
@@ -28,17 +25,25 @@ void ACPP_EnemySpawner::BeginPlay()
 void ACPP_EnemySpawner::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	ACharacter* myCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
-	myCharacter->GetActorLocation();
-	
-	DistanceBetweenPlayerAndSpawner = GetHorizontalDistanceTo(myCharacter);
+
+	ACharacter* MyCharacter = nullptr;
+	if (APlayerController* PlayerController = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr)
+	{
+		MyCharacter = PlayerController->GetCharacter();
+	}
+
+	if (!MyCharacter)
+	{
+		return;
+	}
+
+	DistanceBetweenPlayerAndSpawner = GetHorizontalDistanceTo(MyCharacter);
 	
 	if (DistanceBetweenPlayerAndSpawner <= DistanceBeforeStartSpawning)
 	{
-		if (CanSpawnEnemy == true)
+		if (CanSpawnEnemy)
 		{
 			SpawnWait();
-			
 		}
 	}
 

@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Projectile_Base.h"
+
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/DamageEvents.h"
@@ -39,7 +40,6 @@ AProjectile_Base::AProjectile_Base()
 	ProjectileMovement->MaxSpeed = 3500.f;
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->ProjectileGravityScale = 3.f;
-
 }
 
 // Called when the game starts or when spawned

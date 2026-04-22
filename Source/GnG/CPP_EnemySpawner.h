@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "KismetMathLibrary.generated.h"
 #include "CPP_EnemySpawner.generated.h"
+
+class UStaticMeshComponent;
+
 UCLASS()
 class GNG_API ACPP_EnemySpawner : public AActor
 {

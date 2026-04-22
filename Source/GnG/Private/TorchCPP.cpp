@@ -13,9 +13,9 @@
 ATorchCPP::ATorchCPP()
 {
 	FlameTrailEffect = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("Flame Trail Effect"));
-	// Attach the flame to the root so it stays visible even when the projectile mesh is hidden on impact.
+	// Keep the effect attached and ready, but do not start it until the torch actually impacts something.
 	FlameTrailEffect->SetupAttachment(CollisionBox);
-	FlameTrailEffect->SetAutoActivate(true);
+	FlameTrailEffect->SetAutoActivate(false);
 	FlameTrailEffect->SetRelativeLocation(FVector(40.f, 0.f, 0.f));
 	FlameTrailEffect->SetRelativeScale3D(FlameTrailScale);
 
@@ -155,9 +155,10 @@ void ATorchCPP::HandleImpact(const FVector& ImpactLocation)
 	// Hide the physical torch mesh so only the ground fire remains visible.
 	ProjectileMesh->SetVisibility(false, true);
 
-	// Switch the trail into a larger stationary fire patch once the torch hits something.
+	// Start the impact fire only after the torch lands.
 	FlameTrailEffect->SetRelativeLocation(FVector::ZeroVector);
 	FlameTrailEffect->SetWorldScale3D(ImpactFlameScale);
+	FlameTrailEffect->Activate(true);
 	
 	// If there is no DOT to manage, we can destroy the actor immediately after the impact burst.
 	if (!bApplyBurningDOT || BurningTargets.Num() == 0)
