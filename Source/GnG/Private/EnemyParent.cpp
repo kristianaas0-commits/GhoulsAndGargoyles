@@ -75,7 +75,7 @@ float AEnemyParent::TakeDamage(
 		// Play death Animation
 		GetMesh()->PlayAnimation(DeathAnimation, false);
 		
-        // Destoys the Actor after the animation is finnished
+        // Destroys the Actor after the animation is finished
 		GetWorldTimerManager().SetTimer(
 			DelayTimerHandle,
 			this,
