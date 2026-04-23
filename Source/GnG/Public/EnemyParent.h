@@ -25,18 +25,51 @@ protected:
 		class AController* EventInstigator,
 		AActor* DamageCauser
 	) override;
+
+	UFUNCTION()
+	void DestroySelf();
 	
-	UPROPERTY(EditAnywhere)
-	float DefaultHealth;
+	UFUNCTION()
+	void ResetMatrerial();
 	
-	UPROPERTY(BlueprintReadOnly)
-    float CurrentHealth;
-		
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	
+	//Variables for delay
+	FTimerHandle DelayTimerHandle;
+	
+	//Variables for When hit
+	UPROPERTY(EditAnywhere, Category="Health")
+	float DefaultHealth;
+	
+	UPROPERTY(BlueprintReadOnly, Category="Health")
+    float CurrentHealth;
+	
+	UPROPERTY(EditAnywhere, Category = "Health")
+	USoundBase* HitSound;
+	
+	UPROPERTY(EditAnywhere, Category="Health")
+	UMaterial* HitMaterial;
+	
+	UPROPERTY(EditAnywhere, Category="Health")
+	UMaterial* SeeThruMaterial;
+	
+	// Variables for when character dies
+	UPROPERTY(EditAnywhere, Category="Death")
+	UAnimMontage* DeathAnimation;
 
+	UPROPERTY(EditAnywhere, Category="Death")
+	float DeathAnimationDuration;
+	
+	UPROPERTY(EditAnywhere, Category = "Death")
+    USoundBase* DeathSound;
+	
+	UPROPERTY(EditAnywhere, Category="Death")
+	bool bIsDead;
+	
+	
 };
