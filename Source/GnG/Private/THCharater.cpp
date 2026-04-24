@@ -39,7 +39,6 @@ ATHCharater::ATHCharater()
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
 	DefaultSecondaryWeaponClass = ATorchCPP::StaticClass();
-	// TEMP TESTING: remove this default when reverting the hotbar back to 2 slots.
 	DefaultTertiaryWeaponClass = AHeavyAxe::StaticClass();
 
 	GetMesh()->SetRelativeRotation(FRotator(0.f,-90.f,0.f));
@@ -99,15 +98,11 @@ void ATHCharater::BeginPlay()
 
 	if (WeaponSelector)
 	{
-		// Use the spawner's configured projectile as the primary weapon when a Blueprint has already set one.
-		TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass = ALanceCPP::StaticClass();
-		if (Spawner && Spawner->ProjectileActor)
-		{
-			DefaultPrimaryWeaponClass = Spawner->ProjectileActor;
-		}
-		WeaponSelector->InitializeWeaponSelector(Spawner, DefaultPrimaryWeaponClass, DefaultSecondaryWeaponClass);
-		// TEMP TESTING: slot 3 starts with HeavyAxe so keys 1, 2, and 3 are all populated.
-		WeaponSelector->AddWeaponToHotbar(DefaultTertiaryWeaponClass);
+		WeaponSelector->InitializeWeaponSelector(
+			Spawner,
+			ALanceCPP::StaticClass(),
+			DefaultSecondaryWeaponClass,
+			DefaultTertiaryWeaponClass);
 	}
 }
 
@@ -134,7 +129,6 @@ void ATHCharater::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 
 	PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &ATHCharater::SelectPrimaryWeapon);
 	PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ATHCharater::SelectSecondaryWeapon);
-	// TEMP TESTING: remove this binding when reverting the hotbar back to 2 slots.
 	PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &ATHCharater::SelectTertiaryWeapon);
 }
 
@@ -191,14 +185,7 @@ void ATHCharater::SelectSecondaryWeapon()
 
 void ATHCharater::SelectTertiaryWeapon()
 {
-	// TEMP TESTING: slot index 2 is the temporary HeavyAxe slot.
 	SelectWeaponSlot(2);
-}
-
-bool ATHCharater::AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass)
-{
-	// The selector owns slot assignment, replacement rules, and spawner synchronization.
-	return WeaponSelector ? WeaponSelector->AddWeaponToHotbar(WeaponClass) : false;
 }
 
 bool ATHCharater::SelectWeaponSlot(int32 SlotIndex)

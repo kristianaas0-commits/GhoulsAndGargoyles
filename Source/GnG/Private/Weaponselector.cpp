@@ -8,9 +8,7 @@
 // Sets default values
 AWeaponselector::AWeaponselector()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
-	// TEMP TESTING: this is 3 so key 3 can hold HeavyAxe during tuning.
 	WeaponSlots.SetNum(HotbarSlotCount);
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
@@ -30,8 +28,8 @@ void AWeaponselector::Tick(float DeltaTime)
 
 }
 
-void AWeaponselector::InitializeWeaponSelector(AProjectileSpawner* InSpawner, TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass,
-	TSubclassOf<AProjectile_Base> DefaultSecondaryWeaponClass)
+void AWeaponselector::InitializeWeaponSelector(AProjectileSpawner* InSpawner, TSubclassOf<AProjectile_Base> PrimaryWeaponClass,
+	TSubclassOf<AProjectile_Base> SecondaryWeaponClass, TSubclassOf<AProjectile_Base> TertiaryWeaponClass)
 {
 	Spawner = InSpawner;
 
@@ -40,47 +38,13 @@ void AWeaponselector::InitializeWeaponSelector(AProjectileSpawner* InSpawner, TS
 		WeaponSlots.SetNum(HotbarSlotCount);
 	}
 
-	// Seed the starting hotbar so weapon selection works before any pickups are collected.
-	WeaponSlots[0] = DefaultPrimaryWeaponClass;
-	WeaponSlots[1] = DefaultSecondaryWeaponClass;
-	// TEMP TESTING: slot 2 is filled by the character with HeavyAxe after initialization.
-	WeaponSlots[2] = nullptr;
+	WeaponSlots[0] = PrimaryWeaponClass;
+	WeaponSlots[1] = SecondaryWeaponClass;
+	WeaponSlots[2] = TertiaryWeaponClass;
 
-	// Prefer slot 0 at startup, but fall back to slot 1 if only one default weapon exists.
-	ActiveWeaponSlot = WeaponSlots[0] ? 0 : (WeaponSlots[1] ? 1 : INDEX_NONE);
-	NextReplacementSlot = GetNextSlotToFill();
-	if (NextReplacementSlot == INDEX_NONE)
-	{
-		// The hotbar is already full, so start the overwrite cycle at slot 0.
-		NextReplacementSlot = 0;
-	}
+	ActiveWeaponSlot = WeaponSlots[0] ? 0 : (WeaponSlots[1] ? 1 : (WeaponSlots[2] ? 2 : INDEX_NONE));
 
 	ApplySelectedWeaponToSpawner();
-}
-
-bool AWeaponselector::AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass)
-{
-	if (!WeaponClass || WeaponSlots.Num() < 2)
-	{
-		return false;
-	}
-
-	// Treat re-picking an owned weapon as a selection change instead of storing duplicates.
-	for (int32 SlotIndex = 0; SlotIndex < WeaponSlots.Num(); ++SlotIndex)
-	{
-		if (WeaponSlots[SlotIndex] == WeaponClass)
-		{
-			return SelectWeaponSlot(SlotIndex);
-		}
-	}
-
-	const int32 EmptySlot = GetNextSlotToFill();
-	const int32 SlotToUse = EmptySlot != INDEX_NONE ? EmptySlot : NextReplacementSlot;
-
-	// Fill empty slots first, then rotate replacements across every active hotbar slot.
-	WeaponSlots[SlotToUse] = WeaponClass;
-	NextReplacementSlot = (SlotToUse + 1) % WeaponSlots.Num();
-	return SelectWeaponSlot(SlotToUse);
 }
 
 bool AWeaponselector::SelectWeaponSlot(int32 SlotIndex)
@@ -119,16 +83,4 @@ void AWeaponselector::ApplySelectedWeaponToSpawner()
 	}
 }
 
-int32 AWeaponselector::GetNextSlotToFill() const
-{
-	for (int32 SlotIndex = 0; SlotIndex < WeaponSlots.Num(); ++SlotIndex)
-	{
-		if (!WeaponSlots[SlotIndex])
-		{
-			return SlotIndex;
-		}
-	}
-
-	return INDEX_NONE;
-}
 

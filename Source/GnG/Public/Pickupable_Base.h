@@ -13,15 +13,6 @@ class USceneComponent;
 class UShapeComponent;
 class UStaticMeshComponent;
 
-UENUM(BlueprintType)
-enum class EPickupRewardType : uint8
-{
-	// Adds score to the player through Jarl_ThirdPersonCharacter_CPP::UpdateScore.
-	Score UMETA(DisplayName = "Score"),
-	// Grants or selects a weapon through Jarl_ThirdPersonCharacter_CPP::AddWeaponToHotbar.
-	Weapon UMETA(DisplayName = "Weapon")
-};
-
 UCLASS()
 class GNG_API APickupable_Base : public AActor
 {
@@ -53,27 +44,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pickup")
 	UShapeComponent* PickUpShape;
 
-	// Chooses which reward path runs when the player overlaps this pickup.
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pickup")
-	EPickupRewardType PickupRewardType = EPickupRewardType::Score;
-
-	// Score amount awarded when this pickup is configured as a score pickup.
+	// Score amount awarded when the player overlaps this pickup.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pickup", meta = (ClampMin = "0"))
 	int32 ScoreAmount = 100;
-
-	// Weapon class granted when this pickup is configured as a weapon pickup.
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pickup")
-	TSubclassOf<AProjectile_Base> WeaponClass;
 	
-	// Shared overlap callback used by both coins and weapon drops.
+	// Shared overlap callback for score pickups.
 	UFUNCTION()
 	void OnPlayerEnterPickupBox(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
-	// Score-specific reward path. Returns true only when the pickup should be consumed.
+	// Returns true only when the pickup should be consumed.
 	UFUNCTION(BlueprintCallable, Category = "Pickup")
 	virtual bool HandleScorePickup(AJarl_ThirdPersonCharacter_CPP* PlayerCharacter);
-
-	// Weapon-specific reward path. Returns true only when the pickup should be consumed.
-	UFUNCTION(BlueprintCallable, Category = "Pickup")
-	virtual bool HandleWeaponPickup(AJarl_ThirdPersonCharacter_CPP* PlayerCharacter);
 };

@@ -39,7 +39,7 @@ protected:
 	void PlayerShoot();
 	void SelectPrimaryWeapon();
 	void SelectSecondaryWeapon();
-	void SelectTertiaryWeapon();
+	void SelectThirdWeapon();
 	
 	// Controller
 	UPROPERTY(EditAnywhere, Category="Input")
@@ -86,6 +86,9 @@ protected:
 	FName SpawnerAttachSocket = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
+	TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
 	TSubclassOf<AProjectile_Base> DefaultSecondaryWeaponClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
@@ -115,9 +118,6 @@ public:
 	// Score function
 	UFUNCTION()
 	void UpdateScore(int32 Amount);
-
-	UFUNCTION(BlueprintCallable, Category = "Hotbar")
-	bool AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass);
 
 	UFUNCTION(BlueprintCallable, Category = "Hotbar")
 	bool SelectWeaponSlot(int32 SlotIndex);

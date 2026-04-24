@@ -16,6 +16,8 @@
 #include "GameFramework/PlayerInput.h"
 #include "Engine/World.h"
 #include "InputCoreTypes.h"
+#include "Kismet/GameplayStatics.h"
+#include "UObject/ConstructorHelpers.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
 // Sets default values
@@ -30,6 +32,19 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	MaxHealth = 100.0f;
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
+
+	// Prefer the Blueprint child so slot 1 uses the configured Lance asset instead of the raw C++ parent.
+	static ConstructorHelpers::FClassFinder<AProjectile_Base> LanceBlueprintClass(TEXT("/Game/Weapons/Projectiles/Lance"));
+	if (LanceBlueprintClass.Succeeded())
+	{
+		DefaultPrimaryWeaponClass = LanceBlueprintClass.Class;
+	}
+	else
+	{
+		// Fall back to the C++ class if the Blueprint asset path changes or cannot be found.
+		DefaultPrimaryWeaponClass = ALanceCPP::StaticClass();
+	}
+
 	DefaultSecondaryWeaponClass = ATorchCPP::StaticClass();
 	DefaultTertiaryWeaponClass = AHeavyAxe::StaticClass();
 }
@@ -96,13 +111,11 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 
 	if (WeaponSelector)
 	{
-		TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass = ALanceCPP::StaticClass();
-		if (Spawner && Spawner->ProjectileActor)
-		{
-			DefaultPrimaryWeaponClass = Spawner->ProjectileActor;
-		}
-		WeaponSelector->InitializeWeaponSelector(Spawner, DefaultPrimaryWeaponClass, DefaultSecondaryWeaponClass);
-		WeaponSelector->AddWeaponToHotbar(DefaultTertiaryWeaponClass);
+		WeaponSelector->InitializeWeaponSelector(
+			Spawner,
+			DefaultPrimaryWeaponClass,
+			DefaultSecondaryWeaponClass,
+			DefaultTertiaryWeaponClass);
 	}
 }
 
@@ -133,7 +146,7 @@ void AJarl_ThirdPersonCharacter_CPP::SetupPlayerInputComponent(UInputComponent* 
 
 	PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectPrimaryWeapon);
 	PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectSecondaryWeapon);
-	PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectTertiaryWeapon);
+	PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectThirdWeapon);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::Move(const FInputActionValue& Value)
@@ -240,9 +253,17 @@ void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 {
 	if (Spawner)
 	{
-		const FVector SpawnLocation = GetActorLocation() + (GetActorForwardVector() * 100.f) + FVector(0.f, 0.f, 50.f);
+		const FVector SpawnLocation = GetActorLocation() + (GetActorForwardVector() * 100.f) + FVector(50.f, 0.f, 50.f);
 		const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : GetActorRotation();
 		Spawner->Fire(SpawnLocation, SpawnRotation);
+		
+		if (Spawner && Spawner->ProjectileActor)
+		{
+			if (const AProjectile_Base* ProjectileSounds = Spawner->ProjectileActor->GetDefaultObject<AProjectile_Base>())
+			{
+				UGameplayStatics::PlaySoundAtLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
+			}
+		}
 	}
 }
 
@@ -256,7 +277,7 @@ void AJarl_ThirdPersonCharacter_CPP::SelectSecondaryWeapon()
 	SelectWeaponSlot(1);
 }
 
-void AJarl_ThirdPersonCharacter_CPP::SelectTertiaryWeapon()
+void AJarl_ThirdPersonCharacter_CPP::SelectThirdWeapon()
 {
 	SelectWeaponSlot(2);
 }
@@ -264,11 +285,6 @@ void AJarl_ThirdPersonCharacter_CPP::SelectTertiaryWeapon()
 void AJarl_ThirdPersonCharacter_CPP::UpdateScore(int32 Amount)
 {
 	Score += Amount;
-}
-
-bool AJarl_ThirdPersonCharacter_CPP::AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass)
-{
-	return WeaponSelector ? WeaponSelector->AddWeaponToHotbar(WeaponClass) : false;
 }
 
 bool AJarl_ThirdPersonCharacter_CPP::SelectWeaponSlot(int32 SlotIndex)
