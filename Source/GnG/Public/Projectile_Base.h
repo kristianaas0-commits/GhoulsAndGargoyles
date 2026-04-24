@@ -55,6 +55,9 @@ public:
 	float Damage = 25.f;
 
 	UPROPERTY(EditAnywhere, Category = "Sounds")
-	USoundBase* HitSound = nullptr;
+	USoundBase* ThrowSound;	
+	
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	USoundBase* HitSounds;
 	
 };

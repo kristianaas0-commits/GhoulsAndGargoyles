@@ -16,6 +16,8 @@
 #include "GameFramework/PlayerInput.h"
 #include "Engine/World.h"
 #include "InputCoreTypes.h"
+#include "Kismet/GameplayStatics.h"
+#include "UObject/ConstructorHelpers.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
 // Sets default values
@@ -30,6 +32,19 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	MaxHealth = 100.0f;
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
+
+	// Prefer the Blueprint child so slot 1 uses the configured Lance asset instead of the raw C++ parent.
+	static ConstructorHelpers::FClassFinder<AProjectile_Base> LanceBlueprintClass(TEXT("/Game/Weapons/Projectiles/Lance"));
+	if (LanceBlueprintClass.Succeeded())
+	{
+		DefaultPrimaryWeaponClass = LanceBlueprintClass.Class;
+	}
+	else
+	{
+		// Fall back to the C++ class if the Blueprint asset path changes or cannot be found.
+		DefaultPrimaryWeaponClass = ALanceCPP::StaticClass();
+	}
+
 	DefaultSecondaryWeaponClass = ATorchCPP::StaticClass();
 	DefaultTertiaryWeaponClass = AHeavyAxe::StaticClass();
 }
@@ -98,7 +113,7 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 	{
 		WeaponSelector->InitializeWeaponSelector(
 			Spawner,
-			ALanceCPP::StaticClass(),
+			DefaultPrimaryWeaponClass,
 			DefaultSecondaryWeaponClass,
 			DefaultTertiaryWeaponClass);
 	}
@@ -241,6 +256,14 @@ void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 		const FVector SpawnLocation = GetActorLocation() + (GetActorForwardVector() * 100.f) + FVector(50.f, 0.f, 50.f);
 		const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : GetActorRotation();
 		Spawner->Fire(SpawnLocation, SpawnRotation);
+		
+		if (Spawner && Spawner->ProjectileActor)
+		{
+			if (const AProjectile_Base* ProjectileSounds = Spawner->ProjectileActor->GetDefaultObject<AProjectile_Base>())
+			{
+				UGameplayStatics::PlaySoundAtLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
+			}
+		}
 	}
 }
 

@@ -86,6 +86,9 @@ protected:
 	FName SpawnerAttachSocket = NAME_None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
+	TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
 	TSubclassOf<AProjectile_Base> DefaultSecondaryWeaponClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")

@@ -6,6 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/DamageEvents.h"
 #include "GameFramework/DamageType.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AProjectile_Base::AProjectile_Base()
@@ -40,6 +41,7 @@ AProjectile_Base::AProjectile_Base()
 	ProjectileMovement->MaxSpeed = 3500.f;
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->ProjectileGravityScale = 3.f;
+	
 }
 
 // Called when the game starts or when spawned
@@ -80,6 +82,13 @@ void AProjectile_Base::OnProjectileOverlap(UPrimitiveComponent* OverlappedCompon
 
 	FDamageEvent DamageEvent(UDamageType::StaticClass());
 	OtherActor->TakeDamage(Damage, DamageEvent, InstigatorController, this);
+
+	// Play the configured throw sound before the projectile destroys itself.
+	if (HitSounds)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, HitSounds, SweepResult.ImpactPoint);
+	}
+
 	Destroy();
 }
 
@@ -91,6 +100,13 @@ void AProjectile_Base::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor
 	{
 		return;
 	}
+
+	// Use the blocking hit location so impacts on walls and props sound correct.
+	if (HitSounds)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, HitSounds, Hit.ImpactPoint);
+	}
+
 	Destroy();
 }
 
