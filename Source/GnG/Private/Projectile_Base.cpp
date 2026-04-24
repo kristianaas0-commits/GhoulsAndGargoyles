@@ -62,6 +62,7 @@ void AProjectile_Base::Tick(float DeltaTime)
 
 }
 
+//Check whether or not it hit something and if it should apply damage
 void AProjectile_Base::OnProjectileOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -82,6 +83,7 @@ void AProjectile_Base::OnProjectileOverlap(UPrimitiveComponent* OverlappedCompon
 	Destroy();
 }
 
+//Checks if the actor is the player or if its part of the scene before it applies damage or if it should destroy the itself
 void AProjectile_Base::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	FVector NormalImpulse, const FHitResult& Hit)
 {
@@ -89,8 +91,6 @@ void AProjectile_Base::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor
 	{
 		return;
 	}
-
-	// A blocking hit means the projectile has reached the end of its path.
 	Destroy();
 }
 

@@ -39,7 +39,7 @@ protected:
 	void PlayerShoot();
 	void SelectPrimaryWeapon();
 	void SelectSecondaryWeapon();
-	void SelectTertiaryWeapon();
+	void SelectThirdWeapon();
 	
 	// Controller
 	UPROPERTY(EditAnywhere, Category="Input")
