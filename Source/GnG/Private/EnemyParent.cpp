@@ -64,7 +64,7 @@ float AEnemyParent::TakeDamage(
 	if (CurrentHealth <= 0)
 	{
 		
-		
+		DeathEvent(KillingScore);
 		
 		// Tells the StateTree that it is dead
 		bIsDead = true;
@@ -112,6 +112,11 @@ void AEnemyParent::Tick(float DeltaTime)
 void AEnemyParent::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+}
+
+void AEnemyParent::DeathEvent(float Score)
+{
+	OnDeathForScore.Broadcast(Score);
 }
 
 

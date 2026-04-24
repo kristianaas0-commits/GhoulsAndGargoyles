@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "EnemyParent.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathForScore, float, Score);
+
 UCLASS()
 class GNG_API AEnemyParent : public ACharacter
 {
@@ -42,23 +44,36 @@ public:
 	//Variables for delay
 	FTimerHandle DelayTimerHandle;
 	
-	//Variables for When hit
-	UPROPERTY(EditAnywhere, Category="Health")
-	float DefaultHealth;
+	/*
+	Variables for When hit
+	*/
+	
+	UPROPERTY(EditAnywhere, Category="Health") 
+	float DefaultHealth; //Max health
 	
 	UPROPERTY(BlueprintReadOnly, Category="Health")
-    float CurrentHealth;
+    float CurrentHealth; // Current health
 	
 	UPROPERTY(EditAnywhere, Category = "Health")
-	USoundBase* HitSound;
+	USoundBase* HitSound; // Sound that plays if enemy get hit
 	
 	UPROPERTY(EditAnywhere, Category="Health")
-	UMaterial* HitMaterial;
+	UMaterial* HitMaterial; // Overlay material to visually represent when the enemy get hit
 	
 	UPROPERTY(EditAnywhere, Category="Health")
 	UMaterial* SeeThruMaterial;
 	
-	// Variables for when character dies
+	
+	/*
+	Variables for when the enemy dies	
+	*/
+	
+	UPROPERTY(BlueprintAssignable, Category = "Death")
+	FOnDeathForScore OnDeathForScore;
+	
+	UFUNCTION(BlueprintCallable, Category = "Death")
+	void DeathEvent(float Score);
+	
 	UPROPERTY(EditAnywhere, Category="Death")
 	UAnimMontage* DeathAnimation;
 
@@ -73,5 +88,6 @@ public:
 
 	UPROPERTY(EditAnywhere, Category="Death")
     float KillingScore;
-
+	
+	
 };
