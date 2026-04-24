@@ -60,8 +60,12 @@ float AEnemyParent::TakeDamage(
 		false)
 	;
 	
+	// Checking if dead
 	if (CurrentHealth <= 0)
 	{
+		
+		
+		
 		// Tells the StateTree that it is dead
 		bIsDead = true;
 		

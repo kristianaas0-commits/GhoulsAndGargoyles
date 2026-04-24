@@ -70,6 +70,8 @@ public:
 	
 	UPROPERTY(EditAnywhere, Category="Death")
 	bool bIsDead;
-	
-	
+
+	UPROPERTY(EditAnywhere, Category="Death")
+    float KillingScore;
+
 };
