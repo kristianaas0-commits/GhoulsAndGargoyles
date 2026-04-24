@@ -2,9 +2,9 @@
 
 
 #include "EnemyParent.h"
-#include "Engine/DamageEvents.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
 AEnemyParent::AEnemyParent()
@@ -15,6 +15,8 @@ AEnemyParent::AEnemyParent()
 	bIsDead = false;
 	DefaultHealth = 100;
 	CurrentHealth = DefaultHealth;
+	
+	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent"));
 }
 
 // Called when the game starts or when spawned
@@ -63,8 +65,14 @@ float AEnemyParent::TakeDamage(
 	// Checking if dead
 	if (CurrentHealth <= 0)
 	{
-		
+		// Score event dispatcher
 		DeathEvent(KillingScore);
+		
+		// Stops the logic in the StateTree
+		StateTreeComponent->StopLogic("");
+		
+		// Stops the movement
+		GetCharacterMovement()->StopActiveMovement();
 		
 		// Tells the StateTree that it is dead
 		bIsDead = true;

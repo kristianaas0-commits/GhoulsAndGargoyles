@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "EnemyParent.generated.h"
+#include "Components/StateTreeComponent.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathForScore, float, Score);
 
@@ -45,7 +46,14 @@ public:
 	FTimerHandle DelayTimerHandle;
 	
 	/*
-	Variables for When hit
+	 * StateTree
+	 */
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
+	UStateTreeComponent* StateTreeComponent;
+	
+	/*
+	 * Variables for When hit
 	*/
 	
 	UPROPERTY(EditAnywhere, Category="Health") 
@@ -65,7 +73,7 @@ public:
 	
 	
 	/*
-	Variables for when the enemy dies	
+	 * Variables for when the enemy dies	
 	*/
 	
 	UPROPERTY(BlueprintAssignable, Category = "Death")
