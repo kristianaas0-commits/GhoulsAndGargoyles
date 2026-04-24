@@ -9,6 +9,9 @@
 class AProjectileSpawner;
 class AProjectile_Base;
 class AWeaponselector;
+class AWaterBodyRiver;
+class AController;
+class AActor;
 struct FInputActionValue;
 class UInputAction;
 class UInputMappingContext;
@@ -76,6 +79,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float MaxHealth;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stats")
+	int32 MaxHits;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stats")
+	int32 HitsRemaining;
+
 	UPROPERTY(EditAnywhere, Category = "Weapons")
 	TSubclassOf<AProjectileSpawner> SpawnerClass;
 
@@ -99,6 +108,12 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Hotbar")
 	AWeaponselector* WeaponSelector;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Water")
+	bool bIsCameraUnderRiver;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Water")
+	float CameraDepthUnderRiver;
 	
 	// Movement settings
 	float DefaultGroundFriction;
@@ -107,6 +122,11 @@ protected:
 	bool bIsSliding;
 	bool bIsSprinting;
 	FTimerHandle SlideTimerHandle;
+
+	bool UpdateCameraRiverOverlap();
+	void RefreshHealthState();
+	void UpdateHealthHUD() const;
+	void HandlePlayerDeath();
 
 public:	
 	// Called every frame
@@ -119,6 +139,8 @@ public:
 	UFUNCTION()
 	void UpdateScore(int32 Amount);
 
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
 	UFUNCTION(BlueprintCallable, Category = "Hotbar")
 	bool SelectWeaponSlot(int32 SlotIndex);
 
@@ -127,4 +149,13 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Hotbar")
 	int32 GetActiveWeaponSlot() const;
+
+	UFUNCTION(BlueprintPure, Category = "Water")
+	bool IsCameraUnderRiver() const { return bIsCameraUnderRiver; }
+
+	UFUNCTION(BlueprintPure, Category = "Stats")
+	int32 GetHitsRemaining() const { return HitsRemaining; }
+
+	UFUNCTION(BlueprintPure, Category = "Stats")
+	bool IsDead() const { return HitsRemaining <= 0; }
 };

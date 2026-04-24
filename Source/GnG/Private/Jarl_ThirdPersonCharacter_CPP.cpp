@@ -3,6 +3,7 @@
 
 #include "Jarl_ThirdPersonCharacter_CPP.h"
 
+#include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "HeavyAxe.h"
@@ -13,9 +14,16 @@
 #include "TorchCPP.h"
 #include "Weaponselector.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/HUD.h"
 #include "GameFramework/PlayerInput.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
 #include "InputCoreTypes.h"
+#include "Camera/CameraComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "UObject/UnrealType.h"
+#include "WaterBodyComponent.h"
+#include "WaterBodyRiverActor.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -28,8 +36,10 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 
 	bIsMoving = false;
 	Score = 0;
-	Health = 100.0f;
-	MaxHealth = 100.0f;
+	MaxHits = 3;
+	HitsRemaining = MaxHits;
+	Health = static_cast<float>(HitsRemaining);
+	MaxHealth = static_cast<float>(MaxHits);
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
 
@@ -47,6 +57,8 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 
 	DefaultSecondaryWeaponClass = ATorchCPP::StaticClass();
 	DefaultTertiaryWeaponClass = AHeavyAxe::StaticClass();
+	bIsCameraUnderRiver = false;
+	CameraDepthUnderRiver = 0.0f;
 }
 
 // Called when the game starts or when spawned
@@ -76,7 +88,9 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 	bIsSliding = false;
 	bIsSprinting = false;
 	
-	Health = MaxHealth;
+	HitsRemaining = FMath::Clamp(MaxHits, 0, MaxHits);
+	RefreshHealthState();
+	UpdateHealthHUD();
 
 	if (SpawnerClass && !Spawner)
 	{
@@ -124,6 +138,7 @@ void AJarl_ThirdPersonCharacter_CPP::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	UpdateCameraRiverOverlap();
 }
 
 // Called to bind functionality to input
@@ -287,6 +302,34 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(int32 Amount)
 	Score += Amount;
 }
 
+float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (DamageAmount <= 0.0f || HitsRemaining <= 0)
+	{
+		return 0.0f;
+	}
+
+	HitsRemaining = FMath::Max(0, HitsRemaining - 1);
+	RefreshHealthState();
+	UpdateHealthHUD();
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			reinterpret_cast<uint64>(this) + 1,
+			2.0f,
+			FColor::Red,
+			FString::Printf(TEXT("Hits Remaining: %d"), HitsRemaining));
+	}
+
+	if (HitsRemaining <= 0)
+	{
+		HandlePlayerDeath();
+	}
+
+	return 1.0f;
+}
+
 bool AJarl_ThirdPersonCharacter_CPP::SelectWeaponSlot(int32 SlotIndex)
 {
 	return WeaponSelector ? WeaponSelector->SelectWeaponSlot(SlotIndex) : false;
@@ -300,4 +343,119 @@ TSubclassOf<AProjectile_Base> AJarl_ThirdPersonCharacter_CPP::GetWeaponInSlot(in
 int32 AJarl_ThirdPersonCharacter_CPP::GetActiveWeaponSlot() const
 {
 	return WeaponSelector ? WeaponSelector->GetActiveWeaponSlot() : INDEX_NONE;
+}
+
+bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
+{
+	CameraDepthUnderRiver = 0.0f;
+	bIsCameraUnderRiver = false;
+
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (!PlayerController)
+	{
+		return false;
+	}
+
+	FVector CameraLocation;
+	FRotator CameraRotation;
+	PlayerController->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+	for (TActorIterator<AWaterBodyRiver> RiverIt(GetWorld()); RiverIt; ++RiverIt)
+	{
+		AWaterBodyRiver* River = *RiverIt;
+		if (!River)
+		{
+			continue;
+		}
+
+		UWaterBodyComponent* WaterBodyComponent = River->GetWaterBodyComponent();
+		if (!WaterBodyComponent)
+		{
+			continue;
+		}
+
+		const TValueOrError<FWaterBodyQueryResult, EWaterBodyQueryError> QueryResult =
+			WaterBodyComponent->TryQueryWaterInfoClosestToWorldLocation(
+				CameraLocation,
+				EWaterBodyQueryFlags::ComputeLocation | EWaterBodyQueryFlags::ComputeImmersionDepth);
+		if (!QueryResult.HasValue())
+		{
+			continue;
+		}
+
+		const FWaterBodyQueryResult& WaterInfo = QueryResult.GetValue();
+		if (WaterInfo.IsInWater() && !WaterInfo.IsInExclusionVolume())
+		{
+			bIsCameraUnderRiver = true;
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(
+					reinterpret_cast<uint64>(this),
+					0.0f,
+					FColor::Cyan,
+					FString::Printf(TEXT("Camera under water")));
+			}
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void AJarl_ThirdPersonCharacter_CPP::RefreshHealthState()
+{
+	MaxHits = FMath::Max(1, MaxHits);
+	HitsRemaining = FMath::Clamp(HitsRemaining, 0, MaxHits);
+
+	// Keep the old float values in sync so existing Blueprint widgets keep working.
+	MaxHealth = static_cast<float>(MaxHits);
+	Health = static_cast<float>(HitsRemaining);
+}
+
+void AJarl_ThirdPersonCharacter_CPP::UpdateHealthHUD() const
+{
+	const APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	AHUD* HUD = PlayerController->GetHUD();
+	if (!HUD)
+	{
+		return;
+	}
+
+	const FObjectProperty* HealthWidgetProperty = FindFProperty<FObjectProperty>(HUD->GetClass(), TEXT("UI_HealthRef"));
+	if (!HealthWidgetProperty)
+	{
+		return;
+	}
+
+	UObject* HealthWidgetObject = HealthWidgetProperty->GetObjectPropertyValue_InContainer(HUD);
+	UUserWidget* HealthWidget = Cast<UUserWidget>(HealthWidgetObject);
+	if (!HealthWidget)
+	{
+		return;
+	}
+
+	UFunction* RefreshHeartsFunction = HealthWidget->FindFunction(TEXT("RefreshHearts"));
+	if (!RefreshHeartsFunction)
+	{
+		return;
+	}
+
+	HealthWidget->ProcessEvent(RefreshHeartsFunction, nullptr);
+}
+
+void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
+{
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			reinterpret_cast<uint64>(this) + 2,
+			3.0f,
+			FColor::Red,
+			TEXT("Player defeated"));
+	}
 }
