@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "EnemyParent.generated.h"
+#include "Components/StateTreeComponent.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathForScore, float, Score);
 
 UCLASS()
 class GNG_API AEnemyParent : public ACharacter
@@ -25,18 +28,74 @@ protected:
 		class AController* EventInstigator,
 		AActor* DamageCauser
 	) override;
+
+	UFUNCTION()
+	void DestroySelf();
 	
-	UPROPERTY(EditAnywhere)
-	float DefaultHealth;
+	UFUNCTION()
+	void ResetMatrerial();
 	
-	UPROPERTY(BlueprintReadOnly)
-    float CurrentHealth;
-		
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	
+	//Variables for delay
+	FTimerHandle DelayTimerHandle;
+	
+	/*
+	 * StateTree
+	 */
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
+	UStateTreeComponent* StateTreeComponent;
+	
+	/*
+	 * Variables for When hit
+	*/
+	
+	UPROPERTY(EditAnywhere, Category="Health") 
+	float DefaultHealth; //Max health
+	
+	UPROPERTY(BlueprintReadOnly, Category="Health")
+    float CurrentHealth; // Current health
+	
+	UPROPERTY(EditAnywhere, Category = "Health")
+	USoundBase* HitSound; // Sound that plays if enemy get hit
+	
+	UPROPERTY(EditAnywhere, Category="Health")
+	UMaterial* HitMaterial; // Overlay material to visually represent when the enemy get hit
+	
+	UPROPERTY(EditAnywhere, Category="Health")
+	UMaterial* SeeThruMaterial;
+	
+	
+	/*
+	 * Variables for when the enemy dies	
+	*/
+	
+	UPROPERTY(BlueprintAssignable, Category = "Death")
+	FOnDeathForScore OnDeathForScore;
+	
+	UFUNCTION(BlueprintCallable, Category = "Death")
+	void DeathEvent(float Score);
+	
+	UPROPERTY(EditAnywhere, Category="Death")
+	UAnimMontage* DeathAnimation;
 
+	UPROPERTY(EditAnywhere, Category="Death")
+	float DeathAnimationDuration;
+	
+	UPROPERTY(EditAnywhere, Category = "Death")
+    USoundBase* DeathSound;
+	
+	UPROPERTY(EditAnywhere, Category="Death")
+	bool bIsDead;
+
+	UPROPERTY(EditAnywhere, Category="Death")
+    float KillingScore;
+	
+	
 };
