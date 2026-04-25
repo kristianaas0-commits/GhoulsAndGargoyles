@@ -7,6 +7,7 @@
 #include "EnemyParent.generated.h"
 #include "Components/StateTreeComponent.h"
 
+// Declaring the events that updates the score
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathForScore, float, Score);
 
 UCLASS()
@@ -30,10 +31,10 @@ protected:
 	) override;
 
 	UFUNCTION()
-	void DestroySelf();
+	void DestroySelf(); // Function called after a delay, destroys self
 	
 	UFUNCTION()
-	void ResetMatrerial();
+	void ResetMatrerial(); // Function called after a delay, removes the overlay matrial
 	
 public:	
 	// Called every frame
@@ -50,7 +51,7 @@ public:
 	 */
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
-	UStateTreeComponent* StateTreeComponent;
+	UStateTreeComponent* StateTreeComponent; // State Tree
 	
 	/*
 	 * Variables for When hit
@@ -69,7 +70,7 @@ public:
 	UMaterial* HitMaterial; // Overlay material to visually represent when the enemy get hit
 	
 	UPROPERTY(EditAnywhere, Category="Health")
-	UMaterial* SeeThruMaterial;
+	UMaterial* SeeThruMaterial; // Needed for removing the overlay material
 	
 	
 	/*
@@ -77,25 +78,25 @@ public:
 	*/
 	
 	UPROPERTY(BlueprintAssignable, Category = "Death")
-	FOnDeathForScore OnDeathForScore;
+	FOnDeathForScore OnDeathForScore; // Event
+	
 	
 	UFUNCTION(BlueprintCallable, Category = "Death")
-	void DeathEvent(float Score);
+	void DeathEvent(float Score); // Function to call Event broadcast
 	
 	UPROPERTY(EditAnywhere, Category="Death")
-	UAnimMontage* DeathAnimation;
+	UAnimMontage* DeathAnimation; // Death animation
 
 	UPROPERTY(EditAnywhere, Category="Death")
-	float DeathAnimationDuration;
+	float DeathAnimationDuration; // Wait between the damage being applied and the actor being destroyed
 	
 	UPROPERTY(EditAnywhere, Category = "Death")
-    USoundBase* DeathSound;
+    USoundBase* DeathSound; // Death sound
 	
 	UPROPERTY(EditAnywhere, Category="Death")
-	bool bIsDead;
+	bool bIsDead; // Bool 
 
 	UPROPERTY(EditAnywhere, Category="Death")
-    float KillingScore;
-	
+    float KillingScore; // Score gained for killing the enemy
 	
 };
