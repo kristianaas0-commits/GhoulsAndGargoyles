@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "TorchCPP.h"
+#include "Projectile_Base.h"
 #include "Components/BoxComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Engine/OverlapResult.h"
@@ -8,6 +9,7 @@
 #include "Engine/DamageEvents.h"
 #include "GameFramework/DamageType.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 
 ATorchCPP::ATorchCPP()
@@ -192,6 +194,12 @@ void ATorchCPP::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* Other
 		return;
 	}
 
+	// Use the blocking hit location so impacts on walls and props sound correct.
+	if (HitSounds)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, HitSounds, Hit.ImpactPoint);
+	}
+	
 	// World geometry usually triggers blocking hits, so this path covers walls, floors, and props.
 	HandleImpact(Hit.ImpactPoint);
 }
