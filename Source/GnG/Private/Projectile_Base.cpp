@@ -4,9 +4,30 @@
 
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "AudioDevice.h"
 #include "Engine/DamageEvents.h"
+#include "Engine/World.h"
+#include "GameFramework/Pawn.h"
 #include "GameFramework/DamageType.h"
-#include "Kismet/GameplayStatics.h"
+
+namespace
+{
+	void PlaySoundAtWorldLocation(AActor* SourceActor, USoundBase* Sound, const FVector& Location)
+	{
+		if (!SourceActor || !Sound)
+		{
+			return;
+		}
+
+		if (UWorld* World = SourceActor->GetWorld())
+		{
+			if (FAudioDevice* AudioDevice = World->GetAudioDeviceRaw())
+			{
+				AudioDevice->PlaySoundAtLocation(Sound, World, 1.f, 1.f, 0.f, Location, FRotator::ZeroRotator);
+			}
+		}
+	}
+}
 
 // Sets default values
 AProjectile_Base::AProjectile_Base()
@@ -84,9 +105,9 @@ void AProjectile_Base::OnProjectileOverlap(UPrimitiveComponent* OverlappedCompon
 	OtherActor->TakeDamage(Damage, DamageEvent, InstigatorController, this);
 
 	// Play the configured throw sound before the projectile destroys itself.
-	if (HitSounds)
+	if (ThrowSound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, HitSounds, SweepResult.ImpactPoint);
+		PlaySoundAtWorldLocation(this, ThrowSound, SweepResult.ImpactPoint);
 	}
 
 	Destroy();
@@ -104,7 +125,7 @@ void AProjectile_Base::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor
 	// Use the blocking hit location so impacts on walls and props sound correct.
 	if (HitSounds)
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, HitSounds, Hit.ImpactPoint);
+		PlaySoundAtWorldLocation(this, HitSounds, Hit.ImpactPoint);
 	}
 
 	Destroy();

@@ -55,9 +55,9 @@ public:
 	float Damage = 25.f;
 
 	UPROPERTY(EditAnywhere, Category = "Sounds")
-	USoundBase* ThrowSound;	
-	
+	USoundBase* ThrowSound = nullptr; // Sounds for when the weapon itself is thrown
+
 	UPROPERTY(EditAnywhere, Category = "Sounds")
-	USoundBase* HitSounds;
-	
+	USoundBase* HitSounds = nullptr; // Sounds for when the projectile hits terrain
+
 };

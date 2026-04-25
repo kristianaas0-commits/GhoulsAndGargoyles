@@ -5,6 +5,9 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "AudioDevice.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Engine/LocalPlayer.h"
 #include "HeavyAxe.h"
 #include "InputMappingContext.h"
 #include "LanceCPP.h"
@@ -16,10 +19,28 @@
 #include "GameFramework/PlayerInput.h"
 #include "Engine/World.h"
 #include "InputCoreTypes.h"
-#include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
+
+namespace
+{
+	void PlaySoundAtWorldLocation(AActor* SourceActor, USoundBase* Sound, const FVector& Location)
+	{
+		if (!SourceActor || !Sound)
+		{
+			return;
+		}
+
+		if (UWorld* World = SourceActor->GetWorld())
+		{
+			if (FAudioDevice* AudioDevice = World->GetAudioDeviceRaw())
+			{
+				AudioDevice->PlaySoundAtLocation(Sound, World, 1.f, 1.f, 0.f, Location, FRotator::ZeroRotator);
+			}
+		}
+	}
+}
 // Sets default values
 AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 {
@@ -261,7 +282,7 @@ void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 		{
 			if (const AProjectile_Base* ProjectileSounds = Spawner->ProjectileActor->GetDefaultObject<AProjectile_Base>())
 			{
-				UGameplayStatics::PlaySoundAtLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
+				PlaySoundAtWorldLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
 			}
 		}
 	}
