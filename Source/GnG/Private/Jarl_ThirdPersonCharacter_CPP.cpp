@@ -43,6 +43,10 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
 
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	FollowCamera->SetupAttachment(GetRootComponent());
+	FollowCamera->bUsePawnControlRotation = true;
+	
 	// Prefer the Blueprint child so slot 1 uses the configured Lance asset instead of the raw C++ parent.
 	static ConstructorHelpers::FClassFinder<AProjectile_Base> LanceBlueprintClass(TEXT("/Game/Weapons/Projectiles/Lance"));
 	if (LanceBlueprintClass.Succeeded())
@@ -268,8 +272,8 @@ void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 {
 	if (Spawner)
 	{
-		const FVector SpawnLocation = GetActorLocation() + (GetActorForwardVector() * 100.f) + FVector(50.f, 0.f, 50.f);
-		const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : GetActorRotation();
+		const FVector SpawnLocation = FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * 100.0f) + (FollowCamera->GetRightVector() * 30.f + FVector(0.f,0.f,-20.f));
+		const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : FollowCamera->GetComponentRotation();
 		Spawner->Fire(SpawnLocation, SpawnRotation);
 		
 		if (Spawner && Spawner->ProjectileActor)

@@ -12,6 +12,7 @@ class AWeaponselector;
 class AWaterBodyRiver;
 class AController;
 class AActor;
+class UCameraComponent;
 struct FInputActionValue;
 class UInputAction;
 class UInputMappingContext;
@@ -65,6 +66,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ShootAction;
+	
+	UPROPERTY(EditAnywhere,BlueprintReadOnly, Category="Input")
+	UCameraComponent* FollowCamera;
 	
 	// Variables
 	UPROPERTY(EditAnywhere, Category="Movement")
