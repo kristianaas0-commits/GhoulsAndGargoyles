@@ -40,8 +40,6 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	Score = 0;
 	MaxHits = 3;
 	HitsRemaining = MaxHits;
-	Health = static_cast<float>(HitsRemaining);
-	MaxHealth = static_cast<float>(MaxHits);
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
 
@@ -96,7 +94,6 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 	bIsSprinting = false;
 	
 	HitsRemaining = FMath::Clamp(MaxHits, 0, MaxHits);
-	RefreshHealthState();
 	UpdateHealthHUD();
 
 	if (SpawnerClass && !Spawner)
@@ -290,20 +287,20 @@ void AJarl_ThirdPersonCharacter_CPP::StopSprint()
 
 void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 {
-	if (Spawner)
-	{
-		const FVector SpawnLocation = FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * 100.0f) + (FollowCamera->GetRightVector() * 30.f + FVector(0.f,0.f,-20.f));
-		const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : FollowCamera->GetComponentRotation();
-		const bool bDidFire = Spawner->TryFire(SpawnLocation, SpawnRotation);
-		
-		if (bDidFire && Spawner->ProjectileActor)
+		if (Spawner)
 		{
-			if (const AProjectile_Base* ProjectileSounds = Spawner->ProjectileActor->GetDefaultObject<AProjectile_Base>())
+			const FVector SpawnLocation = FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * 100.0f) + (FollowCamera->GetRightVector() * 30.f + FVector(0.f,0.f,-20.f));
+			const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : FollowCamera->GetComponentRotation();
+			Spawner->Fire(SpawnLocation, SpawnRotation);
+		
+			if (Spawner && Spawner->ProjectileActor)
 			{
-				UGameplayStatics::PlaySoundAtLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
+				if (const AProjectile_Base* ProjectileSounds = Spawner->ProjectileActor->GetDefaultObject<AProjectile_Base>())
+				{
+					UGameplayStatics::PlaySoundAtLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
+				}
 			}
 		}
-	}
 }
 
 void AJarl_ThirdPersonCharacter_CPP::TogglePause()
@@ -403,7 +400,6 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 	}
 
 	HitsRemaining = FMath::Max(0, HitsRemaining - 1);
-	RefreshHealthState();
 	UpdateHealthHUD();
 
 	if (GEngine)
@@ -493,16 +489,6 @@ bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
 	}
 
 	return false;
-}
-
-void AJarl_ThirdPersonCharacter_CPP::RefreshHealthState()
-{
-	MaxHits = FMath::Max(1, MaxHits);
-	HitsRemaining = FMath::Clamp(HitsRemaining, 0, MaxHits);
-
-	// Keep the old float values in sync so existing Blueprint widgets keep working.
-	MaxHealth = static_cast<float>(MaxHits);
-	Health = static_cast<float>(HitsRemaining);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::UpdateHealthHUD() const

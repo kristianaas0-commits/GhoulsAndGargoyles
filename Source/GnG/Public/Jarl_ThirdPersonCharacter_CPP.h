@@ -78,12 +78,6 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float Score;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
-	float Health;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
-	float MaxHealth;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stats")
 	int32 MaxHits;
@@ -133,7 +127,6 @@ protected:
 	FTimerHandle SlideTimerHandle;
 
 	bool UpdateCameraRiverOverlap();
-	void RefreshHealthState();
 	void UpdateHealthHUD() const;
 	void HandlePlayerDeath();
 	
@@ -147,7 +140,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
 	// Score function
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable)
 	void UpdateScore(float Amount, bool bIsCyclops);
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
