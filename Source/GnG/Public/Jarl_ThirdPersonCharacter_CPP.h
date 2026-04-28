@@ -40,6 +40,7 @@ protected:
 	void StopSprint();
 	void StopSlide();
 	void PlayerShoot();
+	void TogglePause();
 	void SelectPrimaryWeapon();
 	void SelectSecondaryWeapon();
 	void SelectThirdWeapon();

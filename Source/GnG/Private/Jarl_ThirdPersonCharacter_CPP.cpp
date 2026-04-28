@@ -159,6 +159,12 @@ void AJarl_ThirdPersonCharacter_CPP::SetupPlayerInputComponent(UInputComponent* 
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &AJarl_ThirdPersonCharacter_CPP::PlayerShoot);
 	}
 
+	FInputKeyBinding& PauseBindingEscape = PlayerInputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::TogglePause);
+	PauseBindingEscape.bExecuteWhenPaused = true;
+
+	FInputKeyBinding& PauseBindingP = PlayerInputComponent->BindKey(EKeys::P, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::TogglePause);
+	PauseBindingP.bExecuteWhenPaused = true;
+
 	PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectPrimaryWeapon);
 	PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectSecondaryWeapon);
 	PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectThirdWeapon);
@@ -280,6 +286,17 @@ void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 			}
 		}
 	}
+}
+
+void AJarl_ThirdPersonCharacter_CPP::TogglePause()
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+
+	const bool bIsPaused = UGameplayStatics::IsGamePaused(this);
+	UGameplayStatics::SetGamePaused(this, !bIsPaused);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::SelectPrimaryWeapon()
