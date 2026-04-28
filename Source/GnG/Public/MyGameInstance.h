@@ -18,6 +18,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float EndGameTimer;
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int Score;
 };
