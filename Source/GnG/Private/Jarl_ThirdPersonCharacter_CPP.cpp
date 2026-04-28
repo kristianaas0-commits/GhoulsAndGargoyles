@@ -381,14 +381,16 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 		}
 	}
 
-	if (GEngine && bIsCyclops)
+	if (bIsCyclops)
 	{
-		GEngine->AddOnScreenDebugMessage(
-			-1, 
-			2.0f, 
-			FColor::Green, 
-			TEXT("GAME WON")
-		);
+		UMyGameInstance*GI = Cast<UMyGameInstance>(GetGameInstance());
+		if (GI)
+		{
+			GI->EndGameTimer = GameTimer;
+			GI->EndScore = Score;
+		}
+		
+		UGameplayStatics::OpenLevel(this, FName("EndScreen"));
 	}
 }
 
@@ -536,12 +538,6 @@ void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
 		if (GI)
 		{
 			GI->EndGameTimer = GameTimer;
-			UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
-			GEngine->AddOnScreenDebugMessage(
-				reinterpret_cast<uint64>(this) + 2,
-				3.0f,
-				FColor::Red,
-				TEXT("GameTimer"));
 		}
 		UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
 		GEngine->AddOnScreenDebugMessage(
@@ -549,5 +545,6 @@ void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
 			3.0f,
 			FColor::Red,
 			TEXT("Player defeated"));
+		
 	}
 }

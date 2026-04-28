@@ -19,5 +19,5 @@ public:
 	float EndGameTimer;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int Score;
+	int EndScore;
 };
