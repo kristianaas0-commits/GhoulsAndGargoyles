@@ -99,5 +99,6 @@ public:
 	UPROPERTY(EditAnywhere, Category="Death")
     float KillingScore; // Score gained for killing the enemy
 	
+	UPROPERTY(EditAnywhere, Category="Death")
 	bool bIsCyclops;
 };

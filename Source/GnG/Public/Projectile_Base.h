@@ -53,8 +53,8 @@ public:
 	// Base direct-hit damage applied by the default overlap implementation.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float Damage = 25.f;
-
-
+	
+	
 /*
 * Sounds
 * */

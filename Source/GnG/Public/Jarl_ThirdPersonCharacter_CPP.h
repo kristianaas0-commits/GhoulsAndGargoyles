@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Jarl_ThirdPersonCharacter_CPP.generated.h"
 
+class AEnemyParent;
 class AProjectileSpawner;
 class AProjectile_Base;
 class AWeaponselector;
@@ -76,7 +77,7 @@ protected:
 	bool bIsMoving;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
-	int32 Score;
+	float Score;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float Health;
@@ -120,6 +121,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Water")
 	float CameraDepthUnderRiver;
 	
+	UPROPERTY()
+	AEnemyParent* EnemyParentInstance;
+	
 	// Movement settings
 	float DefaultGroundFriction;
 	float DefaultWalkSpeed;
@@ -142,7 +146,7 @@ public:
 	
 	// Score function
 	UFUNCTION()
-	void UpdateScore(int32 Amount);
+	void UpdateScore(float Amount, bool bIsCyclops);
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 

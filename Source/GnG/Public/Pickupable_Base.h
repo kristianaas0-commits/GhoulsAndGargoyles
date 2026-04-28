@@ -46,7 +46,7 @@ public:
 
 	// Score amount awarded when the player overlaps this pickup.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Pickup", meta = (ClampMin = "0"))
-	int32 ScoreAmount = 100;
+	float ScoreAmount = 100;
 	
 	// Shared overlap callback for score pickups.
 	UFUNCTION()
