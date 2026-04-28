@@ -21,6 +21,7 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	
+	// For begin overlap event
 	UFUNCTION()
 	void OnOverlapBegin(
 		UPrimitiveComponent* OverlappedComponent,
@@ -30,20 +31,27 @@ protected:
 		bool bFromSweep,
 		const FHitResult& SweepResult
 		);
+	
+	// For delay function
+	UFUNCTION()
+	void DestroySelf();
 
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
+	
+	// For delay function
+	FTimerHandle DelayTimerHandle;
+	
 	UPROPERTY(EditAnywhere, Category="Projectile")
     float Damage;
 	
 	UPROPERTY(VisibleAnywhere, EditAnywhere)
-	UMeshComponent* Mesh;
+	UStaticMeshComponent* Mesh; // Mesh
 	
 	UPROPERTY(EditAnywhere, VisibleAnywhere)
-	USphereComponent* CollisionSphere;
+	USphereComponent* CollisionSphere; // Collision Sphere
 	
 	UPROPERTY(EditAnywhere, VisibleAnywhere)
-	UProjectileMovementComponent* ProjectileMovement;
+	UProjectileMovementComponent* ProjectileMovement; // Projectile Movement
 };

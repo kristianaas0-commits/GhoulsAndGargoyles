@@ -66,7 +66,7 @@ float AEnemyParent::TakeDamage(
 	if (CurrentHealth <= 0)
 	{
 		
-		DeathEvent(KillingScore); // Calling Score Event function
+		DeathEvent(KillingScore, bIsCyclops); // Calling Score Event function
 		
 		StateTreeComponent->StopLogic(""); // Stops the logic in the StateTree
 		
@@ -121,7 +121,7 @@ void AEnemyParent::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 }
 
 // Event broadcaster for updating the score
-void AEnemyParent::DeathEvent(float Score)
+void AEnemyParent::DeathEvent(float Score, bool bIsCyclops)
 {
 	OnDeathForScore.Broadcast(Score);
 }

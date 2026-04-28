@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "EnemyParent.generated.h"
 #include "Components/StateTreeComponent.h"
+#include "EnemyParent.generated.h"
 
 // Declaring the events that updates the score
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathForScore, float, Score);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathForScore, float, Score, bool, bIsCyclops);
 
 UCLASS()
 class GNG_API AEnemyParent : public ACharacter
@@ -80,9 +80,8 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Death")
 	FOnDeathForScore OnDeathForScore; // Event
 	
-	
 	UFUNCTION(BlueprintCallable, Category = "Death")
-	void DeathEvent(float Score); // Function to call Event broadcast
+	void DeathEvent(float Score, bool bIsCyclops); // Function to call Event broadcast
 	
 	UPROPERTY(EditAnywhere, Category="Death")
 	UAnimMontage* DeathAnimation; // Death animation
@@ -99,4 +98,5 @@ public:
 	UPROPERTY(EditAnywhere, Category="Death")
     float KillingScore; // Score gained for killing the enemy
 	
+	bool bIsCyclops;
 };

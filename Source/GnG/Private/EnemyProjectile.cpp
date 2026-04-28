@@ -3,6 +3,7 @@
 
 #include "EnemyProjectile.h"
 #include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 // Sets default values
 AEnemyProjectile::AEnemyProjectile()
@@ -13,19 +14,24 @@ AEnemyProjectile::AEnemyProjectile()
 	// Projectile Movement
 	ProjectileMovement=CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
 	
-	//Mesh
-	Mesh=CreateDefaultSubobject<UMeshComponent>(TEXT("Mesh"));
-	//Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	
+	// Collision Sphere
 	CollisionSphere=CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
-	CollisionSphere->InitSphereRadius(1.f);
-	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	CollisionSphere->SetCollisionObjectType(ECC_Pawn);
+	CollisionSphere->InitSphereRadius(1.f);// Set the radius
+	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly); // Sets the type of collision
+	CollisionSphere->SetCollisionObjectType(ECC_Pawn); 
 	CollisionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	
+	RootComponent = CollisionSphere;
+	
 	// OnBeginOverlap Event
 	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemyProjectile::OnOverlapBegin);
+	
+	//Mesh
+	Mesh=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+	
+	Mesh->SetupAttachment(RootComponent); // Assign the mesh to the Collision Sphere
+	
 }	
 
 // Called when the game starts or when spawned
@@ -33,8 +39,18 @@ void AEnemyProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// Destroys the projectile after a delau
+	GetWorldTimerManager().SetTimer(
+			DelayTimerHandle,
+			this,
+			&AEnemyProjectile::DestroySelf,
+			5.f,
+			false
+			);
+	
 }
 
+// Begin Overlap Event
 void AEnemyProjectile::OnOverlapBegin(
 	UPrimitiveComponent* OverlappedComponent, 
 	AActor* OtherActor,
@@ -43,9 +59,10 @@ void AEnemyProjectile::OnOverlapBegin(
 	bool bFromSweep, 
 	const FHitResult& SweepResult)
 {
-	
+	// If the overlapping actor has a tag
 	if (ActorHasTag(OtherActor("Player")))
 	{
+		// Applies damage
 		UGameplayStatics::ApplyDamage(
 			OtherActor,
 			Damage,
@@ -53,7 +70,14 @@ void AEnemyProjectile::OnOverlapBegin(
 			this,
 			UDamageType::StaticClass()
 			);
+		
+		Destroy();// Destroys the projectile
 	}
+}
+
+void AEnemyProjectile::DestroySelf()
+{
+	Destroy();
 }
 
 // Called every frame
