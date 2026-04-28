@@ -14,4 +14,9 @@ class GNG_API ALanceCPP : public AProjectile_Base
 {
 	GENERATED_BODY()
 	
+public:
+	ALanceCPP();
+	
+	
+	
 };

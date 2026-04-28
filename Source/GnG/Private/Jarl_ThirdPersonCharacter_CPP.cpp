@@ -287,20 +287,34 @@ void AJarl_ThirdPersonCharacter_CPP::StopSprint()
 
 void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 {
-		if (Spawner)
-		{
+	if (!Spawner)
+	{
+		return;
+	}
+			const FVector CameraLocation = FollowCamera->GetComponentLocation();
+			const FVector CameraRotation = FollowCamera->GetForwardVector();
+
 			const FVector SpawnLocation = FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * 100.0f) + (FollowCamera->GetRightVector() * 30.f + FVector(0.f,0.f,-20.f));
-			const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : FollowCamera->GetComponentRotation();
-			Spawner->Fire(SpawnLocation, SpawnRotation);
-		
-			if (Spawner && Spawner->ProjectileActor)
+			const FVector TraceEnd = CameraLocation + (CameraRotation * 10000.0f);
+	
+			FHitResult HitResult;
+			FCollisionQueryParams QueryParams;
+			QueryParams.AddIgnoredActor(this);
+			QueryParams.AddIgnoredActor(Spawner);
+	
+			const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult,CameraLocation,TraceEnd,ECC_Visibility,QueryParams);
+			
+			const FVector AimPoint = bHit ? HitResult.Location : TraceEnd;
+			const FRotator AimRotation = (AimPoint - SpawnLocation).Rotation();
+	
+			//plays a sound when its actually Fired
+			if (AProjectile_Base* Projectile = Spawner->Fire(SpawnLocation, AimRotation))
 			{
-				if (const AProjectile_Base* ProjectileSounds = Spawner->ProjectileActor->GetDefaultObject<AProjectile_Base>())
+				if (Projectile->ThrowSound)
 				{
-					UGameplayStatics::PlaySoundAtLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
+					UGameplayStatics::PlaySoundAtLocation(this, Projectile->ThrowSound, GetActorLocation());
 				}
 			}
-		}
 }
 
 void AJarl_ThirdPersonCharacter_CPP::TogglePause()

@@ -39,7 +39,7 @@ public:
 
 	// Spawns the configured projectile class using the transform supplied by the character.
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
-	void Fire(const FVector& SpawnLocation, const FRotator& SpawnRotation);
+	AProjectile_Base* Fire(const FVector& SpawnLocation, const FRotator& SpawnRotation);
 
 	// Same as Fire, but returns false when the current weapon is still on cooldown.
 	UFUNCTION(BlueprintCallable, Category = "Weapon")

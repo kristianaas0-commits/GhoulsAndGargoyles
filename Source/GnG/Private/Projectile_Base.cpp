@@ -79,7 +79,6 @@ void AProjectile_Base::BeginPlay()
 		ProjectileMesh->IgnoreActorWhenMoving(OwnerActor, true);
 	}
 	
-	AmmoCount = MagazineSize;
 }
 
 // Called every frame
@@ -109,9 +108,9 @@ void AProjectile_Base::OnProjectileOverlap(UPrimitiveComponent* OverlappedCompon
 	OtherActor->TakeDamage(Damage, DamageEvent, InstigatorController, this);
 
 	// Play the configured throw sound before the projectile destroys itself.
-	if (ThrowSound)
+	if (HitSounds)
 	{
-		PlaySoundAtWorldLocation(this, ThrowSound, SweepResult.ImpactPoint);
+		PlaySoundAtWorldLocation(this, HitSounds, SweepResult.ImpactPoint);
 	}
 
 	Destroy();
