@@ -117,22 +117,19 @@ bool AProjectileSpawner::CanFireCurrentWeapon() const
 	return CanFireWeapon(ProjectileActor);
 }
 
-void AProjectileSpawner::Fire(const FVector& SpawnLocation, const FRotator& SpawnRotation)
+AProjectile_Base* AProjectileSpawner::Fire(const FVector& SpawnLocation, const FRotator& SpawnRotation)
 {
-	TryFire(SpawnLocation, SpawnRotation);
-}
-
-bool AProjectileSpawner::TryFire(const FVector& SpawnLocation, const FRotator& SpawnRotation)
-{
+	// Return the spawned projectile so callers can react only when a shot really happened.
 	if (!ProjectileActor || !GetWorld())
 	{
-		return false;
+		return nullptr;
 	}
 
 	EnsureWeaponFireStateInitialized(ProjectileActor);
+	// Cooldown blocks the shot entirely, so callers also get nullptr here.
 	if (!CanFireWeapon(ProjectileActor))
 	{
-		return false;
+		return nullptr;
 	}
 
 	// Forward the owner and instigator so damage can be attributed back to the player.
@@ -142,9 +139,20 @@ bool AProjectileSpawner::TryFire(const FVector& SpawnLocation, const FRotator& S
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
 	// Spawn using the camera-based transform provided by the character rather than the spawner mesh rotation.
-	GetWorld()->SpawnActor<AProjectile_Base>(ProjectileActor, SpawnLocation, SpawnRotation, SpawnParameters);
+	AProjectile_Base* SpawnedProjectile =
+		GetWorld()->SpawnActor<AProjectile_Base>(ProjectileActor, SpawnLocation, SpawnRotation, SpawnParameters);
+	if (!SpawnedProjectile)
+	{
+		return nullptr;
+	}
 
-	// A successful shot immediately starts cooldown for the current weapon class.
+	// Only start cooldown after spawn succeeds.
 	StartFireCooldown(ProjectileActor);
-	return true;
+	return SpawnedProjectile;
+}
+
+bool AProjectileSpawner::TryFire(const FVector& SpawnLocation, const FRotator& SpawnRotation)
+{
+	// Preserve the bool API by treating a valid spawned projectile as a successful fire.
+	return Fire(SpawnLocation, SpawnRotation) != nullptr;
 }
