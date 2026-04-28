@@ -7,8 +7,8 @@
 #include "Components/StateTreeComponent.h"
 #include "EnemyParent.generated.h"
 
-// Declaring the events that updates the score
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDeathForScore, float, Score, bool, bIsCyclops);
+// Declaring the event that updates the score when an enemy dies.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDeathForScore, float, Score, bool, bIsCyclops);
 
 UCLASS()
 class GNG_API AEnemyParent : public ACharacter
@@ -81,7 +81,7 @@ public:
 	FOnDeathForScore OnDeathForScore; // Event
 	
 	UFUNCTION(BlueprintCallable, Category = "Death")
-	void DeathEvent(float Score, bool bIsCyclops); // Function to call Event broadcast
+	void DeathEvent(float Score, bool bIsCyclopsValue); // Function to call Event broadcast
 	
 	UPROPERTY(EditAnywhere, Category="Death")
 	UAnimSequence* DeathAnimation; // Death animation

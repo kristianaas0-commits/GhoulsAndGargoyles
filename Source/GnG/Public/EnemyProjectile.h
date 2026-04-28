@@ -46,12 +46,12 @@ public:
 	UPROPERTY(EditAnywhere, Category="Projectile")
     float Damage;
 	
-	UPROPERTY(VisibleAnywhere, EditAnywhere)
+	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* Mesh; // Mesh
 	
-	UPROPERTY(EditAnywhere, VisibleAnywhere)
+	UPROPERTY(EditAnywhere)
 	USphereComponent* CollisionSphere; // Collision Sphere
 	
-	UPROPERTY(EditAnywhere, VisibleAnywhere)
+	UPROPERTY(EditAnywhere)
 	UProjectileMovementComponent* ProjectileMovement; // Projectile Movement
 };

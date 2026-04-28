@@ -59,8 +59,8 @@ void AEnemyProjectile::OnOverlapBegin(
 	bool bFromSweep, 
 	const FHitResult& SweepResult)
 {
-	// If the overlapping actor has a tag
-	if (ActorHasTag(OtherActor("Player")))
+	// If the overlapping actor has the player tag
+	if (OtherActor && OtherActor->ActorHasTag(TEXT("Player")))
 	{
 		// Applies damage
 		UGameplayStatics::ApplyDamage(

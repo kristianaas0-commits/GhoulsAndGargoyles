@@ -121,9 +121,9 @@ void AEnemyParent::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 }
 
 // Event broadcaster for updating the score
-void AEnemyParent::DeathEvent(float Score, bool bIsCyclops)
+void AEnemyParent::DeathEvent(float Score, bool bIsCyclopsValue)
 {
-	OnDeathForScore.Broadcast(Score);
+	OnDeathForScore.Broadcast(Score, bIsCyclopsValue);
 }
 
 
