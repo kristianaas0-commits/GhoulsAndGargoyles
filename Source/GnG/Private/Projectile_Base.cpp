@@ -63,6 +63,8 @@ AProjectile_Base::AProjectile_Base()
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->ProjectileGravityScale = 3.f;
 	
+	
+	
 }
 
 // Called when the game starts or when spawned
@@ -76,6 +78,8 @@ void AProjectile_Base::BeginPlay()
 		CollisionBox->IgnoreActorWhenMoving(OwnerActor, true);
 		ProjectileMesh->IgnoreActorWhenMoving(OwnerActor, true);
 	}
+	
+	AmmoCount = MagazineSize;
 }
 
 // Called every frame
@@ -129,5 +133,10 @@ void AProjectile_Base::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor
 	}
 
 	Destroy();
+}
+
+void AProjectile_Base::Reload()
+{
+	
 }
 
