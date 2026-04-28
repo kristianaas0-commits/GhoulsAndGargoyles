@@ -78,12 +78,24 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float Score;
+	
+	UPROPERTY(EditAnywhere, Category="Water")
+	float UnderwaterTimer;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Water")
+	float DrownSpeed = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stats")
 	int32 MaxHits;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stats")
 	int32 HitsRemaining;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stats")
+	int32 MaxShields;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stats")
+	int32 ShieldsRemaining;
 
 	UPROPERTY(EditAnywhere, Category = "Weapons")
 	TSubclassOf<AProjectileSpawner> SpawnerClass;
@@ -128,6 +140,8 @@ protected:
 
 	bool UpdateCameraRiverOverlap();
 	void UpdateHealthHUD() const;
+	void UpdateShieldHUD() const;
+	void RefreshVitalHUD() const;
 	void HandlePlayerDeath();
 	
 	
@@ -143,6 +157,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void UpdateScore(float Amount, bool bIsCyclops);
 
+	UFUNCTION(BlueprintCallable, Category = "Stats")
+	void AddShields(int32 ShieldAmount);
+
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Hotbar")
@@ -156,9 +173,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Water")
 	bool IsCameraUnderRiver() const { return bIsCameraUnderRiver; }
-
+	
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	int32 GetHitsRemaining() const { return HitsRemaining; }
+
+	UFUNCTION(BlueprintPure, Category = "Stats")
+	int32 GetShieldsRemaining() const { return ShieldsRemaining; }
 
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	bool IsDead() const { return HitsRemaining <= 0; }

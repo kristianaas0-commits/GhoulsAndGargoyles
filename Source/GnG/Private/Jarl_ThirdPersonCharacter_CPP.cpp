@@ -16,7 +16,6 @@
 #include "Weaponselector.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/HUD.h"
-#include "GameFramework/PlayerInput.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "InputCoreTypes.h"
@@ -26,10 +25,44 @@
 #include "UObject/UnrealType.h"
 #include "WaterBodyComponent.h"
 #include "WaterBodyRiverActor.h"
+#include "Engine/DamageEvents.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
+
+namespace
+{
+	UUserWidget* GetPlayerHealthWidget(const AJarl_ThirdPersonCharacter_CPP* Character)
+	{
+		if (!Character)
+		{
+			return nullptr;
+		}
+
+		const APlayerController* PlayerController = Cast<APlayerController>(Character->GetController());
+		if (!PlayerController)
+		{
+			return nullptr;
+		}
+
+		AHUD* HUD = PlayerController->GetHUD();
+		if (!HUD)
+		{
+			return nullptr;
+		}
+
+		const FObjectProperty* HealthWidgetProperty = FindFProperty<FObjectProperty>(HUD->GetClass(), TEXT("UI_HealthRef"));
+		if (!HealthWidgetProperty)
+		{
+			return nullptr;
+		}
+
+		UObject* HealthWidgetObject = HealthWidgetProperty->GetObjectPropertyValue_InContainer(HUD);
+		return Cast<UUserWidget>(HealthWidgetObject);
+	}
+}
+
 // Sets default values
 AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 {
@@ -39,9 +72,12 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	bIsMoving = false;
 	Score = 0;
 	MaxHits = 3;
+	MaxShields = 3;
 	HitsRemaining = MaxHits;
+	ShieldsRemaining = 0;
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
+	UnderwaterTimer = 0.0f;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(GetRootComponent());
@@ -93,8 +129,9 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 	bIsSliding = false;
 	bIsSprinting = false;
 	
-	HitsRemaining = FMath::Clamp(MaxHits, 0, MaxHits);
-	UpdateHealthHUD();
+	HitsRemaining = FMath::Clamp(HitsRemaining, 0, MaxHits);
+	ShieldsRemaining = FMath::Clamp(ShieldsRemaining, 0, MaxShields);
+	RefreshVitalHUD();
 
 	if (SpawnerClass && !Spawner)
 	{
@@ -154,6 +191,23 @@ void AJarl_ThirdPersonCharacter_CPP::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	UpdateCameraRiverOverlap();
+	
+	if (IsCameraUnderRiver())
+	{
+		UnderwaterTimer += DeltaTime;
+		
+		if (UnderwaterTimer >= DrownSpeed)
+		{
+			FDamageEvent DamageEvent;
+			TakeDamage(10.0f, DamageEvent, GetController(), this);
+
+            UnderwaterTimer -= DrownSpeed;
+		}
+	}
+	else
+	{
+		UnderwaterTimer = 0.0f;
+	}
 }
 
 // Called to bind functionality to input
@@ -394,11 +448,39 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 	}
 }
 
+void AJarl_ThirdPersonCharacter_CPP::AddShields(int32 ShieldAmount)
+{
+	if (ShieldAmount <= 0)
+	{
+		return;
+	}
+
+	ShieldsRemaining = FMath::Clamp(ShieldsRemaining + ShieldAmount, 0, MaxShields);
+	UpdateShieldHUD();
+}
+
 float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (DamageAmount <= 0.0f || HitsRemaining <= 0)
 	{
 		return 0.0f;
+	}
+
+	if (ShieldsRemaining > 0)
+	{
+		ShieldsRemaining = FMath::Max(0, ShieldsRemaining - 1);
+		UpdateShieldHUD();
+
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				reinterpret_cast<uint64>(this) + 4,
+				2.0f,
+				FColor::Cyan,
+				FString::Printf(TEXT("Shields Remaining: %d"), ShieldsRemaining));
+		}
+
+		return 1.0f;
 	}
 
 	HitsRemaining = FMath::Max(0, HitsRemaining - 1);
@@ -493,28 +575,15 @@ bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
 	return false;
 }
 
+void AJarl_ThirdPersonCharacter_CPP::RefreshVitalHUD() const
+{
+	UpdateHealthHUD();
+	UpdateShieldHUD();
+}
+
 void AJarl_ThirdPersonCharacter_CPP::UpdateHealthHUD() const
 {
-	const APlayerController* PlayerController = Cast<APlayerController>(GetController());
-	if (!PlayerController)
-	{
-		return;
-	}
-
-	AHUD* HUD = PlayerController->GetHUD();
-	if (!HUD)
-	{
-		return;
-	}
-
-	const FObjectProperty* HealthWidgetProperty = FindFProperty<FObjectProperty>(HUD->GetClass(), TEXT("UI_HealthRef"));
-	if (!HealthWidgetProperty)
-	{
-		return;
-	}
-
-	UObject* HealthWidgetObject = HealthWidgetProperty->GetObjectPropertyValue_InContainer(HUD);
-	UUserWidget* HealthWidget = Cast<UUserWidget>(HealthWidgetObject);
+	UUserWidget* HealthWidget = GetPlayerHealthWidget(this);
 	if (!HealthWidget)
 	{
 		return;
@@ -527,6 +596,23 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateHealthHUD() const
 	}
 
 	HealthWidget->ProcessEvent(RefreshHeartsFunction, nullptr);
+}
+
+void AJarl_ThirdPersonCharacter_CPP::UpdateShieldHUD() const
+{
+	UUserWidget* HealthWidget = GetPlayerHealthWidget(this);
+	if (!HealthWidget)
+	{
+		return;
+	}
+
+	UFunction* RefreshShieldsFunction = HealthWidget->FindFunction(TEXT("RefreshShields"));
+	if (!RefreshShieldsFunction)
+	{
+		return;
+	}
+
+	HealthWidget->ProcessEvent(RefreshShieldsFunction, nullptr);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
