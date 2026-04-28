@@ -54,6 +54,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float Damage = 25.f;
 
+
+/*
+* Sounds
+* */
 	UPROPERTY(EditAnywhere, Category = "Sounds")
 	USoundBase* ThrowSound;	
 	

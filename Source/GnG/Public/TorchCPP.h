@@ -9,16 +9,6 @@
 
 class UParticleSystemComponent;
 
-USTRUCT()
-struct FTorchBurnTarget
-{
-	GENERATED_BODY()
-
-	// Stores one actor currently affected by the torch burn effect.
-	UPROPERTY()
-	TObjectPtr<AActor> Target = nullptr;
-};
-
 UCLASS()
 class GNG_API ATorchCPP : public AProjectile_Base
 {
@@ -30,11 +20,7 @@ public:
 
 protected:
 	UFUNCTION()
-	void ApplyAreaDamage();
-
-	// Adds a target to the DOT list if it was caught in the impact blast.
-	UFUNCTION()
-	void ApplyBurningEffect(AActor* Target);
+	void ApplyAreaDamage(float DamageAmount);
 
 	// Repeating timer callback that applies DOT to every tracked burn target.
 	UFUNCTION()
@@ -85,10 +71,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Torch Damage")
 	bool bApplyBurningDOT = true;
-
-	// Tracks actors that were inside the explosion so one timer can damage them over time.
-	UPROPERTY()
-	TArray<FTorchBurnTarget> BurningTargets;
 
 	// A single repeating timer keeps the DOT logic simple and centralized.
 	FTimerHandle BurnTimerHandle;
