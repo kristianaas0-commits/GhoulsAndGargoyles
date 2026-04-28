@@ -54,10 +54,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float Damage = 25.f;
 
-	UPROPERTY(EditAnywhere, Category = "Sounds")
-	USoundBase* ThrowSound = nullptr; // Sounds for when the weapon itself is thrown
 
+/*
+* Sounds
+* */
 	UPROPERTY(EditAnywhere, Category = "Sounds")
-	USoundBase* HitSounds = nullptr; // Sounds for when the projectile hits terrain
-
+	USoundBase* ThrowSound;	
+	
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	USoundBase* HitSounds;
+	
 };
