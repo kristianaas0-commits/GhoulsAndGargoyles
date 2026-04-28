@@ -11,15 +11,13 @@ class AProjectile_Base;
 class UStaticMeshComponent;
 
 USTRUCT(BlueprintType)
-struct FWeaponMagazineConfig
+struct FWeaponFireConfig
 {
 	GENERATED_BODY()
 
+	// Minimum time between shots for this weapon class.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-	int32 MagazineSize = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
-	float ReloadTimeSeconds = 1.0f;
+	float FireCooldownSeconds = 0.0f;
 };
 
 UCLASS()
@@ -43,21 +41,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	void Fire(const FVector& SpawnLocation, const FRotator& SpawnRotation);
 
-	// Same as Fire, but returns whether a projectile was spawned (not reloading / not empty).
-	UFUNCTION(BlueprintCallable, Category = "Weapon|Magazine")
+	// Same as Fire, but returns false when the current weapon is still on cooldown.
+	UFUNCTION(BlueprintCallable, Category = "Weapon")
 	bool TryFire(const FVector& SpawnLocation, const FRotator& SpawnRotation);
 
-	// Remaining ammo for the currently selected projectile class.
-	UFUNCTION(BlueprintPure, Category = "Weapon|Magazine")
-	int32 GetAmmoRemaining() const;
-
-	// Magazine size for the currently selected projectile class.
-	UFUNCTION(BlueprintPure, Category = "Weapon|Magazine")
-	int32 GetMagazineSize() const;
-
-	// True while the currently selected weapon is reloading.
-	UFUNCTION(BlueprintPure, Category = "Weapon|Magazine")
-	bool IsReloading() const;
+	// Returns whether the currently selected weapon is allowed to fire right now.
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	bool CanFireCurrentWeapon() const;
 
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* SpawnerMesh;
@@ -66,28 +56,27 @@ public:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AProjectile_Base> ProjectileActor;
 
-	// Per-weapon magazine settings. If a weapon class is not present, defaults are used.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Magazine")
-	TMap<TSubclassOf<AProjectile_Base>, FWeaponMagazineConfig> MagazineConfigs;
+	// Per-weapon fire rate settings keyed by projectile class.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	TMap<TSubclassOf<AProjectile_Base>, FWeaponFireConfig> WeaponFireConfigs;
 
-	// Fallback used when the projectile class has no entry in MagazineConfigs.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon|Magazine")
-	FWeaponMagazineConfig DefaultMagazineConfig;
+	// Used when a weapon class has no specific entry in WeaponFireConfigs.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	FWeaponFireConfig DefaultFireConfig;
 
 protected:
-	// Ammo lives on the persistent spawner, keyed by weapon class, so it survives projectile spawns.
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Weapon|Magazine")
-	TMap<TSubclassOf<AProjectile_Base>, int32> AmmoRemainingByWeapon;
+	// Cooldown state lives on the spawner because the spawner persists while each projectile does not.
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Weapon")
+	TMap<TSubclassOf<AProjectile_Base>, bool> WeaponCanFireStates;
 
-	// Reload is tracked per weapon class, which lets each slot keep its own state when the player swaps weapons.
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Weapon|Magazine")
-	TSet<TSubclassOf<AProjectile_Base>> ReloadingWeapons;
-
+	// Each weapon class gets its own timer handle so Lance, Torch, and Axe can cool down independently.
 	UPROPERTY()
-	TMap<TSubclassOf<AProjectile_Base>, FTimerHandle> ReloadTimerHandles;
+	TMap<TSubclassOf<AProjectile_Base>, FTimerHandle> WeaponCooldownTimerHandles;
 
-	const FWeaponMagazineConfig& GetMagazineConfigFor(TSubclassOf<AProjectile_Base> WeaponClass) const;
-	void EnsureWeaponStateInitialized(TSubclassOf<AProjectile_Base> WeaponClass);
-	void StartReload(TSubclassOf<AProjectile_Base> WeaponClass);
-	void FinishReload(TSubclassOf<AProjectile_Base> WeaponClass);
+	const FWeaponFireConfig& GetFireConfigFor(TSubclassOf<AProjectile_Base> WeaponClass) const;
+	bool CanFireWeapon(TSubclassOf<AProjectile_Base> WeaponClass) const;
+	void EnsureWeaponFireStateInitialized(TSubclassOf<AProjectile_Base> WeaponClass);
+	void StartFireCooldown(TSubclassOf<AProjectile_Base> WeaponClass);
+	void ResetWeaponCanFire(TSubclassOf<AProjectile_Base> WeaponClass);
+
 };
