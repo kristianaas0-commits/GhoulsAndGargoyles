@@ -136,7 +136,9 @@ protected:
 	void RefreshHealthState();
 	void UpdateHealthHUD() const;
 	void HandlePlayerDeath();
-
+	
+	
+	
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -167,4 +169,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	bool IsDead() const { return HitsRemaining <= 0; }
+	
+	UPROPERTY(BlueprintReadWrite, Category="Stats")
+	float GameTimer;
+	
 };

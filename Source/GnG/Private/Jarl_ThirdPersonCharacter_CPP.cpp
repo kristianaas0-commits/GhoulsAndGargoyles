@@ -20,6 +20,7 @@
 #include "Engine/World.h"
 #include "Engine/Engine.h"
 #include "InputCoreTypes.h"
+#include "MyGameInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Blueprint/UserWidget.h"
 #include "UObject/UnrealType.h"
@@ -544,6 +545,19 @@ void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
 {
 	if (GEngine)
 	{
+		
+		UMyGameInstance*GI = Cast<UMyGameInstance>(GetGameInstance());
+		if (GI)
+		{
+			GI->EndGameTimer = GameTimer;
+			UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
+			GEngine->AddOnScreenDebugMessage(
+				reinterpret_cast<uint64>(this) + 2,
+				3.0f,
+				FColor::Red,
+				TEXT("GameTimer"));
+		}
+		UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
 		GEngine->AddOnScreenDebugMessage(
 			reinterpret_cast<uint64>(this) + 2,
 			3.0f,
