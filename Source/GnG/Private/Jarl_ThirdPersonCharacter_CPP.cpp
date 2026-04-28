@@ -46,6 +46,7 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(GetRootComponent());
 	FollowCamera->bUsePawnControlRotation = true;
+	FollowCamera->AddWorldOffset(FVector(0.f,0.f,70.f));
 	
 	// Prefer the Blueprint child so slot 1 uses the configured Lance asset instead of the raw C++ parent.
 	static ConstructorHelpers::FClassFinder<AProjectile_Base> LanceBlueprintClass(TEXT("/Game/Weapons/Projectiles/Lance"));
