@@ -23,9 +23,7 @@ AProjectileSpawner::AProjectileSpawner()
 	SpawnerMesh->CanCharacterStepUpOn = ECB_No;
 	SpawnerMesh->SetSimulatePhysics(false);
 
-	// Reasonable fallback defaults; override per weapon via MagazineConfigs in the editor/Blueprint.
-	DefaultMagazineConfig.MagazineSize = 1;
-	DefaultMagazineConfig.ReloadTimeSeconds = 1.0f;
+	DefaultFireConfig.FireCooldownSeconds = 0.0f;
 }
 
 // Called when the game starts or when spawned
@@ -41,91 +39,82 @@ void AProjectileSpawner::Tick(float DeltaTime)
 
 }
 
-const FWeaponMagazineConfig& AProjectileSpawner::GetMagazineConfigFor(TSubclassOf<AProjectile_Base> WeaponClass) const
+const FWeaponFireConfig& AProjectileSpawner::GetFireConfigFor(TSubclassOf<AProjectile_Base> WeaponClass) const
 {
-	if (const FWeaponMagazineConfig* FoundConfig = MagazineConfigs.Find(WeaponClass))
+	if (const FWeaponFireConfig* FoundConfig = WeaponFireConfigs.Find(WeaponClass))
 	{
 		return *FoundConfig;
 	}
 
-	return DefaultMagazineConfig;
+	return DefaultFireConfig;
 }
 
-void AProjectileSpawner::EnsureWeaponStateInitialized(TSubclassOf<AProjectile_Base> WeaponClass)
+bool AProjectileSpawner::CanFireWeapon(TSubclassOf<AProjectile_Base> WeaponClass) const
 {
 	if (!WeaponClass)
 	{
-		return;
+		return false;
 	}
 
-	if (AmmoRemainingByWeapon.Contains(WeaponClass))
+	if (const bool* FoundCanFire = WeaponCanFireStates.Find(WeaponClass))
 	{
-		return;
+		return *FoundCanFire;
 	}
 
-	const FWeaponMagazineConfig& Config = GetMagazineConfigFor(WeaponClass);
-	// First time this weapon is selected, seed its runtime ammo from the editor-configured magazine size.
-	AmmoRemainingByWeapon.Add(WeaponClass, FMath::Max(0, Config.MagazineSize));
+	return true;
 }
 
-void AProjectileSpawner::StartReload(TSubclassOf<AProjectile_Base> WeaponClass)
+void AProjectileSpawner::EnsureWeaponFireStateInitialized(TSubclassOf<AProjectile_Base> WeaponClass)
 {
-	if (!WeaponClass || ReloadingWeapons.Contains(WeaponClass) || !GetWorld())
+	if (!WeaponClass || WeaponCanFireStates.Contains(WeaponClass))
 	{
 		return;
 	}
 
-	const FWeaponMagazineConfig& Config = GetMagazineConfigFor(WeaponClass);
-	const float ReloadDelay = FMath::Max(0.0f, Config.ReloadTimeSeconds);
+	// New weapon classes start ready to fire the first time the player switches to them.
+	WeaponCanFireStates.Add(WeaponClass, true);
+}
 
-	ReloadingWeapons.Add(WeaponClass);
+void AProjectileSpawner::StartFireCooldown(TSubclassOf<AProjectile_Base> WeaponClass)
+{
+	if (!WeaponClass || !GetWorld())
+	{
+		return;
+	}
 
-	FTimerHandle& Handle = ReloadTimerHandles.FindOrAdd(WeaponClass);
-	GetWorldTimerManager().ClearTimer(Handle);
-	// Reload completes asynchronously so fire input can simply query ReloadingWeapons and bail out.
+	const float CooldownSeconds = FMath::Max(0.0f, GetFireConfigFor(WeaponClass).FireCooldownSeconds);
+	if (CooldownSeconds <= 0.0f)
+	{
+		WeaponCanFireStates.FindOrAdd(WeaponClass) = true;
+		return;
+	}
+
+	// Mark just this weapon as blocked; swapping weapons should not pause or reset other cooldowns.
+	WeaponCanFireStates.FindOrAdd(WeaponClass) = false;
+
+	FTimerHandle& TimerHandle = WeaponCooldownTimerHandles.FindOrAdd(WeaponClass);
+	GetWorldTimerManager().ClearTimer(TimerHandle);
+	// When the timer completes, this weapon class becomes available again.
 	GetWorldTimerManager().SetTimer(
-		Handle,
-		FTimerDelegate::CreateUObject(this, &AProjectileSpawner::FinishReload, WeaponClass),
-		ReloadDelay,
+		TimerHandle,
+		FTimerDelegate::CreateUObject(this, &AProjectileSpawner::ResetWeaponCanFire, WeaponClass),
+		CooldownSeconds,
 		false);
 }
 
-void AProjectileSpawner::FinishReload(TSubclassOf<AProjectile_Base> WeaponClass)
+void AProjectileSpawner::ResetWeaponCanFire(TSubclassOf<AProjectile_Base> WeaponClass)
 {
 	if (!WeaponClass)
 	{
 		return;
 	}
 
-	const FWeaponMagazineConfig& Config = GetMagazineConfigFor(WeaponClass);
-	AmmoRemainingByWeapon.FindOrAdd(WeaponClass) = FMath::Max(0, Config.MagazineSize);
-	ReloadingWeapons.Remove(WeaponClass);
+	WeaponCanFireStates.FindOrAdd(WeaponClass) = true;
 }
 
-int32 AProjectileSpawner::GetAmmoRemaining() const
+bool AProjectileSpawner::CanFireCurrentWeapon() const
 {
-	if (!ProjectileActor)
-	{
-		return 0;
-	}
-
-	if (const int32* FoundAmmo = AmmoRemainingByWeapon.Find(ProjectileActor))
-	{
-		return *FoundAmmo;
-	}
-
-	// Not initialized yet; report full mag size so UI doesn't flash 0 on begin play.
-	return FMath::Max(0, GetMagazineConfigFor(ProjectileActor).MagazineSize);
-}
-
-int32 AProjectileSpawner::GetMagazineSize() const
-{
-	return ProjectileActor ? FMath::Max(0, GetMagazineConfigFor(ProjectileActor).MagazineSize) : 0;
-}
-
-bool AProjectileSpawner::IsReloading() const
-{
-	return ProjectileActor ? ReloadingWeapons.Contains(ProjectileActor) : false;
+	return CanFireWeapon(ProjectileActor);
 }
 
 void AProjectileSpawner::Fire(const FVector& SpawnLocation, const FRotator& SpawnRotation)
@@ -140,18 +129,9 @@ bool AProjectileSpawner::TryFire(const FVector& SpawnLocation, const FRotator& S
 		return false;
 	}
 
-	EnsureWeaponStateInitialized(ProjectileActor);
-
-	if (ReloadingWeapons.Contains(ProjectileActor))
+	EnsureWeaponFireStateInitialized(ProjectileActor);
+	if (!CanFireWeapon(ProjectileActor))
 	{
-		return false;
-	}
-
-	int32& AmmoRemaining = AmmoRemainingByWeapon.FindOrAdd(ProjectileActor);
-	if (AmmoRemaining <= 0)
-	{
-		// Hitting an empty magazine starts reload on the current weapon instead of spawning anything.
-		StartReload(ProjectileActor);
 		return false;
 	}
 
@@ -164,12 +144,7 @@ bool AProjectileSpawner::TryFire(const FVector& SpawnLocation, const FRotator& S
 	// Spawn using the camera-based transform provided by the character rather than the spawner mesh rotation.
 	GetWorld()->SpawnActor<AProjectile_Base>(ProjectileActor, SpawnLocation, SpawnRotation, SpawnParameters);
 
-	AmmoRemaining = FMath::Max(0, AmmoRemaining - 1);
-	if (AmmoRemaining <= 0)
-	{
-		// The shot that empties the mag is still allowed; reload begins immediately after it leaves the spawner.
-		StartReload(ProjectileActor);
-	}
-
+	// A successful shot immediately starts cooldown for the current weapon class.
+	StartFireCooldown(ProjectileActor);
 	return true;
 }

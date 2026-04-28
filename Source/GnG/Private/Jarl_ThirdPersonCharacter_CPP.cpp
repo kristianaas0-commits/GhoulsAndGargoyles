@@ -289,20 +289,20 @@ void AJarl_ThirdPersonCharacter_CPP::StopSprint()
 
 void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 {
-	if (Spawner)
-	{
-		const FVector SpawnLocation = FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * 100.0f) + (FollowCamera->GetRightVector() * 30.f + FVector(0.f,0.f,-20.f));
-		const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : FollowCamera->GetComponentRotation();
-		const bool bDidFire = Spawner->TryFire(SpawnLocation, SpawnRotation);
-		
-		if (bDidFire && Spawner->ProjectileActor)
+		if (Spawner)
 		{
-			if (const AProjectile_Base* ProjectileSounds = Spawner->ProjectileActor->GetDefaultObject<AProjectile_Base>())
+			const FVector SpawnLocation = FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * 100.0f) + (FollowCamera->GetRightVector() * 30.f + FVector(0.f,0.f,-20.f));
+			const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : FollowCamera->GetComponentRotation();
+			Spawner->Fire(SpawnLocation, SpawnRotation);
+		
+			if (Spawner && Spawner->ProjectileActor)
 			{
-				UGameplayStatics::PlaySoundAtLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
+				if (const AProjectile_Base* ProjectileSounds = Spawner->ProjectileActor->GetDefaultObject<AProjectile_Base>())
+				{
+					UGameplayStatics::PlaySoundAtLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
+				}
 			}
 		}
-	}
 }
 
 void AJarl_ThirdPersonCharacter_CPP::TogglePause()
