@@ -84,7 +84,7 @@ public:
 	void DeathEvent(float Score, bool bIsCyclops); // Function to call Event broadcast
 	
 	UPROPERTY(EditAnywhere, Category="Death")
-	UAnimMontage* DeathAnimation; // Death animation
+	UAnimSequence* DeathAnimation; // Death animation
 
 	UPROPERTY(EditAnywhere, Category="Death")
 	float DeathAnimationDuration; // Wait between the damage being applied and the actor being destroyed
