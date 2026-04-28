@@ -3,6 +3,7 @@
 
 #include "Jarl_ThirdPersonCharacter_CPP.h"
 
+#include "EnemyParent.h"
 #include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -135,6 +136,17 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 			DefaultPrimaryWeaponClass,
 			DefaultSecondaryWeaponClass,
 			DefaultTertiaryWeaponClass);
+	}
+	
+	TArray<AActor*> FoundEnemies;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemyParent::StaticClass(), FoundEnemies);
+
+	for (AActor* FoundActor : FoundEnemies)
+	{
+		if (AEnemyParent* Enemy = Cast<AEnemyParent>(FoundActor))
+		{
+			Enemy->OnDeathForScore.AddDynamic(this, &AJarl_ThirdPersonCharacter_CPP::UpdateScore);
+		}
 	}
 }
 
@@ -319,9 +331,67 @@ void AJarl_ThirdPersonCharacter_CPP::SelectThirdWeapon()
 	SelectWeaponSlot(2);
 }
 
-void AJarl_ThirdPersonCharacter_CPP::UpdateScore(int32 Amount)
+void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 {
 	Score += Amount;
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			reinterpret_cast<uint64>(this) + 3,
+			2.0f,
+			FColor::Yellow,
+			FString::Printf(TEXT("Amount: %.2f | Score: %.2f"), Amount, Score));
+	}
+
+	const APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (PlayerController)
+	{
+		AHUD* HUD = PlayerController->GetHUD();
+		if (HUD)
+		{
+			const FObjectProperty* ScoreWidgetProperty = FindFProperty<FObjectProperty>(HUD->GetClass(), TEXT("UI_ScoreRef"));
+			if (ScoreWidgetProperty)
+			{
+				UObject* ScoreWidgetObject = ScoreWidgetProperty->GetObjectPropertyValue_InContainer(HUD);
+				UUserWidget* ScoreWidget = Cast<UUserWidget>(ScoreWidgetObject);
+				if (ScoreWidget)
+				{
+					UFunction* ChangeScoreFunction = ScoreWidget->FindFunction(TEXT("ChangeScore"));
+					if (ChangeScoreFunction)
+					{
+						const float CurrentScoreValue = Score;
+						TArray<uint8> ParamBuffer;
+						ParamBuffer.SetNumZeroed(ChangeScoreFunction->ParmsSize);
+
+						if (FProperty* ScoreParamProperty = ChangeScoreFunction->FindPropertyByName(TEXT("Score")))
+						{
+							if (FFloatProperty* FloatProperty = CastField<FFloatProperty>(ScoreParamProperty))
+							{
+								FloatProperty->SetFloatingPointPropertyValue(ParamBuffer.GetData(), CurrentScoreValue);
+							}
+							else if (FDoubleProperty* DoubleProperty = CastField<FDoubleProperty>(ScoreParamProperty))
+							{
+								DoubleProperty->SetFloatingPointPropertyValue(ParamBuffer.GetData(), static_cast<double>(CurrentScoreValue));
+							}
+						}
+
+						ScoreWidget->ProcessEvent(ChangeScoreFunction, ParamBuffer.GetData());
+					}
+				}
+			}
+		}
+	}
+
+	if (GEngine && bIsCyclops)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			-1, 
+			2.0f, 
+			FColor::Green, 
+			TEXT("GAME WON")
+		);
+	}
 }
 
 float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)

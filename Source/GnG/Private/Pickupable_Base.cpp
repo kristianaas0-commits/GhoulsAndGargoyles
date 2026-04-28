@@ -76,7 +76,7 @@ bool APickupable_Base::HandleScorePickup(AJarl_ThirdPersonCharacter_CPP* PlayerC
 	}
 
 	// Score handling stays centralized in the player class so HUD or future score-side effects stay in one place.
-	PlayerCharacter->UpdateScore(ScoreAmount);
+	PlayerCharacter->UpdateScore(ScoreAmount, false);
 	return true;
 }
 
