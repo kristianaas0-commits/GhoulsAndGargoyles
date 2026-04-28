@@ -2,7 +2,9 @@
 
 
 #include "EnemyParent.h"
-#include "Engine/DamageEvents.h"
+#include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
 AEnemyParent::AEnemyParent()
@@ -10,8 +12,12 @@ AEnemyParent::AEnemyParent()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	
+	// Setting some variables
+	bIsDead = false;
 	DefaultHealth = 100;
 	CurrentHealth = DefaultHealth;
+	
+	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent")); // Creates the StateTree subobject
 }
 
 // Called when the game starts or when spawned
@@ -38,26 +44,87 @@ float AEnemyParent::TakeDamage(
 	// Use the final applied damage value in case future damage modifiers change the incoming amount.
 	CurrentHealth = FMath::Clamp(CurrentHealth - AppliedDamage, 0.0f, DefaultHealth);
 	
-	if (CurrentHealth <= 0)
+	// Play sound when hit
+	UGameplayStatics::PlaySoundAtLocation(
+		this,
+		HitSound,
+		GetActorLocation()
+	);
+	
+	GetMesh()->SetOverlayMaterial(HitMaterial); // Applying the overlay material Hit Material
+	
+	// Removes the overlay material after a delay
+	GetWorldTimerManager().SetTimer(
+		DelayTimerHandle,
+		this,
+		&AEnemyParent::ResetMatrerial,
+		0.2f,
+		false)
+	;
+	
+	// Checking if dead
+	if (CurrentHealth <= 0 && bIsDead==false)
 	{
-		// Removing the actor here makes death immediate for all current weapon types.
-		Destroy();
+		
+		DeathEvent(KillingScore, bIsCyclops); // Calling Score Event function
+		
+		StateTreeComponent->StopLogic(""); // Stops the logic in the StateTree
+		
+		GetCharacterMovement()->DisableMovement(); // Stops the movement
+		
+		bIsDead = true; 
+		
+		// Play Death Sound
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			DeathSound,
+			GetActorLocation()
+			);
+		
+		GetMesh()->PlayAnimation(DeathAnimation, false); // Play death Animation
+		
+        // Destroys the Actor after the animation is finished
+		GetWorldTimerManager().SetTimer(
+			DestroyTimerHandle,
+			this,
+			&AEnemyParent::DestroySelf,
+			DeathAnimationDuration,
+			false
+			);
 	}
 
 	return AppliedDamage;
 }
+
+// Destroys the actor
+void AEnemyParent::DestroySelf()
+{
+	Destroy();
+}
+
+// Removes the overlay material
+void AEnemyParent::ResetMatrerial()
+{
+	GetMesh()->SetOverlayMaterial(SeeThruMaterial);
+}
+
 // Called every frame
 void AEnemyParent::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 // Called to bind functionality to input
 void AEnemyParent::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+}
 
+// Event broadcaster for updating the score
+void AEnemyParent::DeathEvent(float inScore, bool bInIsCyclopsValue)
+{
+	OnDeathForScore.Broadcast(inScore, bInIsCyclopsValue);
+	
 }
 
 

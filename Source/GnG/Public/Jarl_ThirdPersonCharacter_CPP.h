@@ -6,9 +6,14 @@
 #include "GameFramework/Character.h"
 #include "Jarl_ThirdPersonCharacter_CPP.generated.h"
 
+class AEnemyParent;
 class AProjectileSpawner;
 class AProjectile_Base;
 class AWeaponselector;
+class AWaterBodyRiver;
+class AController;
+class AActor;
+class UCameraComponent;
 struct FInputActionValue;
 class UInputAction;
 class UInputMappingContext;
@@ -37,9 +42,10 @@ protected:
 	void StopSprint();
 	void StopSlide();
 	void PlayerShoot();
+	void TogglePause();
 	void SelectPrimaryWeapon();
 	void SelectSecondaryWeapon();
-	void SelectTertiaryWeapon();
+	void SelectThirdWeapon();
 	
 	// Controller
 	UPROPERTY(EditAnywhere, Category="Input")
@@ -63,18 +69,21 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ShootAction;
 	
+	UPROPERTY(EditAnywhere,BlueprintReadOnly, Category="Input")
+	UCameraComponent* FollowCamera;
+	
 	// Variables
 	UPROPERTY(EditAnywhere, Category="Movement")
 	bool bIsMoving;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
-	int32 Score;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
-	float Health;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
-	float MaxHealth;
+	float Score;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stats")
+	int32 MaxHits;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stats")
+	int32 HitsRemaining;
 
 	UPROPERTY(EditAnywhere, Category = "Weapons")
 	TSubclassOf<AProjectileSpawner> SpawnerClass;
@@ -84,6 +93,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Weapons")
 	FName SpawnerAttachSocket = NAME_None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
+	TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
 	TSubclassOf<AProjectile_Base> DefaultSecondaryWeaponClass;
@@ -96,6 +108,15 @@ protected:
 
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Hotbar")
 	AWeaponselector* WeaponSelector;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Water")
+	bool bIsCameraUnderRiver;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Water")
+	float CameraDepthUnderRiver;
+	
+	UPROPERTY()
+	AEnemyParent* EnemyParentInstance;
 	
 	// Movement settings
 	float DefaultGroundFriction;
@@ -105,6 +126,12 @@ protected:
 	bool bIsSprinting;
 	FTimerHandle SlideTimerHandle;
 
+	bool UpdateCameraRiverOverlap();
+	void UpdateHealthHUD() const;
+	void HandlePlayerDeath();
+	
+	
+	
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -113,11 +140,10 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
 	// Score function
-	UFUNCTION()
-	void UpdateScore(int32 Amount);
+	UFUNCTION(BlueprintCallable)
+	void UpdateScore(float Amount, bool bIsCyclops);
 
-	UFUNCTION(BlueprintCallable, Category = "Hotbar")
-	bool AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass);
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Hotbar")
 	bool SelectWeaponSlot(int32 SlotIndex);
@@ -127,4 +153,17 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Hotbar")
 	int32 GetActiveWeaponSlot() const;
+
+	UFUNCTION(BlueprintPure, Category = "Water")
+	bool IsCameraUnderRiver() const { return bIsCameraUnderRiver; }
+
+	UFUNCTION(BlueprintPure, Category = "Stats")
+	int32 GetHitsRemaining() const { return HitsRemaining; }
+
+	UFUNCTION(BlueprintPure, Category = "Stats")
+	bool IsDead() const { return HitsRemaining <= 0; }
+	
+	UPROPERTY(BlueprintReadWrite, Category="Stats")
+	float GameTimer;
+	
 };

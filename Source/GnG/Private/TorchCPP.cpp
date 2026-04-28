@@ -1,21 +1,23 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "TorchCPP.h"
+#include "Projectile_Base.h"
 #include "Components/BoxComponent.h"
 #include "Components/PrimitiveComponent.h"
+#include "Engine/DamageEvents.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
-#include "Engine/DamageEvents.h"
 #include "GameFramework/DamageType.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 
 ATorchCPP::ATorchCPP()
 {
 	FlameTrailEffect = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("Flame Trail Effect"));
-	// Attach the flame to the root so it stays visible even when the projectile mesh is hidden on impact.
+	// Keep the effect attached and ready, but do not start it until the torch actually impacts something.
 	FlameTrailEffect->SetupAttachment(CollisionBox);
-	FlameTrailEffect->SetAutoActivate(true);
+	FlameTrailEffect->SetAutoActivate(false);
 	FlameTrailEffect->SetRelativeLocation(FVector(40.f, 0.f, 0.f));
 	FlameTrailEffect->SetRelativeScale3D(FlameTrailScale);
 
@@ -23,14 +25,14 @@ ATorchCPP::ATorchCPP()
 	ProjectileMovement->ProjectileGravityScale = 3.5f;
 }
 
-void ATorchCPP::ApplyAreaDamage()
+void ATorchCPP::ApplyAreaDamage(float DamageAmount)
 {
-	if (!GetWorld())
+	if (!GetWorld() || DamageAmount <= 0.f)
 	{
 		return;
 	}
 
-	// The overlap query collects every actor close enough to the impact point to be inside the torch blast.
+	// The overlap query collects every actor close enough to the landed fire to be inside the torch blast.
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionShape CollisionShape = FCollisionShape::MakeSphere(AOERadius);
 	FCollisionObjectQueryParams ObjectQueryParams;
@@ -62,66 +64,20 @@ void ATorchCPP::ApplyAreaDamage()
 
 		UniqueTargets.Add(TargetActor);
 
-		// Apply the immediate explosion damage first so the impact still feels responsive.
+		// Route all torch damage through Unreal's standard damage system.
 		FDamageEvent DamageEvent(UDamageType::StaticClass());
-		TargetActor->TakeDamage(ImpactDamage, DamageEvent, GetInstigatorController(), this);
-
-		if (bApplyBurningDOT)
-		{
-			// Queue the actor for future timer ticks instead of applying all DOT damage immediately.
-			ApplyBurningEffect(TargetActor);
-		}
+		TargetActor->TakeDamage(DamageAmount, DamageEvent, GetInstigatorController(), this);
 	}
-
-	// Start one repeating timer after impact to keep all burn targets in sync.
-	if (bApplyBurningDOT && BurningTargets.Num() > 0)
-	{
-		// Track the remaining lifetime explicitly so the timer duration stays easy to tune in Blueprint.
-		BurnTimeRemaining = DamageDuration;
-		GetWorldTimerManager().SetTimer(BurnTimerHandle, this, &ATorchCPP::HandleBurnTick, DamageTickInterval, true);
-	}
-}
-
-void ATorchCPP::ApplyBurningEffect(AActor* Target)
-{
-	if (!Target)
-	{
-		return;
-	}
-
-	// A target should only be added once, otherwise the burn would stack accidentally every time the overlap query sees it.
-	for (const FTorchBurnTarget& BurnTarget : BurningTargets)
-	{
-		if (BurnTarget.Target == Target)
-		{
-			return;
-		}
-	}
-
-	FTorchBurnTarget NewBurnTarget;
-	NewBurnTarget.Target = Target;
-	BurningTargets.Add(NewBurnTarget);
 }
 
 void ATorchCPP::HandleBurnTick()
 {
-	// Each timer tick represents one "burn pulse" that damages every actor still in the burn list.
-	for (int32 Index = BurningTargets.Num() - 1; Index >= 0; --Index)
-	{
-		AActor* TargetActor = BurningTargets[Index].Target.Get();
-		if (!TargetActor || !IsValid(TargetActor))
-		{
-			BurningTargets.RemoveAt(Index);
-			continue;
-		}
+	// Each timer tick damages anyone currently standing in the fire.
+	ApplyAreaDamage(DamagePerTick);
 
-		FDamageEvent DamageEvent(UDamageType::StaticClass());
-		TargetActor->TakeDamage(DamagePerTick, DamageEvent, GetInstigatorController(), this);
-	}
-
-	// Count down until the burn has fully expired, then stop the timer and clean up the projectile.
+	// Count down until the fire has fully expired, then stop the timer and clean up the projectile.
 	BurnTimeRemaining -= DamageTickInterval;
-	if (BurnTimeRemaining <= 0.f || BurningTargets.Num() == 0)
+	if (BurnTimeRemaining <= 0.f)
 	{
 		GetWorldTimerManager().ClearTimer(BurnTimerHandle);
 		Destroy();
@@ -138,32 +94,37 @@ void ATorchCPP::HandleImpact(const FVector& ImpactLocation)
 
 	bImpactHandled = true;
 
+	// Move the actor to the impact point before applying any AOE so the fire damages where it actually lands.
+	SetActorLocation(ImpactLocation + FVector(0.f, 0.f, ImpactFlameHeightOffset));
+
 	if (bApplyAOEOnImpact)
 	{
-		ApplyAreaDamage();
+		ApplyAreaDamage(ImpactDamage);
 	}
-
-	// Move the actor to the impact point so the lingering fire stays on the floor where the torch landed.
-	SetActorLocation(ImpactLocation + FVector(0.f, 0.f, ImpactFlameHeightOffset));
 
 	// Freeze the projectile in place so the lingering fire stays at the impact location.
 	SetActorEnableCollision(false);
 	CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ProjectileMovement->StopMovementImmediately();
 	ProjectileMovement->Deactivate();
-	
+
 	// Hide the physical torch mesh so only the ground fire remains visible.
 	ProjectileMesh->SetVisibility(false, true);
 
-	// Switch the trail into a larger stationary fire patch once the torch hits something.
+	// Start the impact fire only after the torch lands.
 	FlameTrailEffect->SetRelativeLocation(FVector::ZeroVector);
 	FlameTrailEffect->SetWorldScale3D(ImpactFlameScale);
-	
-	// If there is no DOT to manage, we can destroy the actor immediately after the impact burst.
-	if (!bApplyBurningDOT || BurningTargets.Num() == 0)
+	FlameTrailEffect->Activate(true);
+
+	// Keep the fire around for a short time, optionally damaging actors that stay inside it.
+	if (bApplyBurningDOT && DamageTickInterval > 0.f && DamagePerTick > 0.f && DamageDuration > 0.f)
 	{
-		Destroy();
+		BurnTimeRemaining = DamageDuration;
+		GetWorldTimerManager().SetTimer(BurnTimerHandle, this, &ATorchCPP::HandleBurnTick, DamageTickInterval, true);
+		return;
 	}
+
+	SetLifeSpan(FMath::Max(DamageDuration, 0.1f));
 }
 
 void ATorchCPP::OnProjectileOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
@@ -189,6 +150,12 @@ void ATorchCPP::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* Other
 	if (!OtherActor || OtherActor == this || OtherActor == GetOwner())
 	{
 		return;
+	}
+
+	// Use the blocking hit location so impacts on walls and props sound correct.
+	if (HitSounds)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, HitSounds, Hit.ImpactPoint);
 	}
 
 	// World geometry usually triggers blocking hits, so this path covers walls, floors, and props.

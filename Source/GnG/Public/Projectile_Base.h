@@ -3,11 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/HitResult.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Sound/SoundBase.h"
 #include "Projectile_Base.generated.h"
 
-struct FHitResult;
 class UPrimitiveComponent;
 class UBoxComponent;
 class UStaticMeshComponent;
@@ -25,6 +26,18 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	
+	// Default Magazine
+	UPROPERTY(EditAnywhere, Category = "Magasine")
+	int32 MagazineSize = 30;
+	
+	UPROPERTY(EditAnywhere, Category = "Magasine")
+	int32 AmmoCount;
+	
+	UPROPERTY(EditAnywhere, Category = "Magasine")
+	float ReloadTIme = 2.0f;
+	bool bReload = false;
+	
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -52,5 +65,17 @@ public:
 	// Base direct-hit damage applied by the default overlap implementation.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 	float Damage = 25.f;
-
+	
+	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category ="Cooldown")
+	bool CanFire = true;
+	
+/*
+* Sounds
+* */
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	USoundBase* ThrowSound;	
+	
+	UPROPERTY(EditAnywhere, Category = "Sounds")
+	USoundBase* HitSounds;
+	
 };

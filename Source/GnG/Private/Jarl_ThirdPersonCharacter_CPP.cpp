@@ -3,6 +3,8 @@
 
 #include "Jarl_ThirdPersonCharacter_CPP.h"
 
+#include "EnemyParent.h"
+#include "EngineUtils.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "HeavyAxe.h"
@@ -13,9 +15,19 @@
 #include "TorchCPP.h"
 #include "Weaponselector.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/HUD.h"
 #include "GameFramework/PlayerInput.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
 #include "InputCoreTypes.h"
+#include "MyGameInstance.h"
+#include "Camera/CameraComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "UObject/UnrealType.h"
+#include "WaterBodyComponent.h"
+#include "WaterBodyRiverActor.h"
+#include "Kismet/GameplayStatics.h"
+#include "UObject/ConstructorHelpers.h"
 
 class UEnhancedInputLocalPlayerSubsystem;
 // Sets default values
@@ -26,12 +38,32 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 
 	bIsMoving = false;
 	Score = 0;
-	Health = 100.0f;
-	MaxHealth = 100.0f;
+	MaxHits = 3;
+	HitsRemaining = MaxHits;
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
+
+	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
+	FollowCamera->SetupAttachment(GetRootComponent());
+	FollowCamera->bUsePawnControlRotation = true;
+	FollowCamera->AddWorldOffset(FVector(0.f,0.f,70.f));
+	
+	// Prefer the Blueprint child so slot 1 uses the configured Lance asset instead of the raw C++ parent.
+	static ConstructorHelpers::FClassFinder<AProjectile_Base> LanceBlueprintClass(TEXT("/Game/Weapons/Projectiles/Lance"));
+	if (LanceBlueprintClass.Succeeded())
+	{
+		DefaultPrimaryWeaponClass = LanceBlueprintClass.Class;
+	}
+	else
+	{
+		// Fall back to the C++ class if the Blueprint asset path changes or cannot be found.
+		DefaultPrimaryWeaponClass = ALanceCPP::StaticClass();
+	}
+
 	DefaultSecondaryWeaponClass = ATorchCPP::StaticClass();
 	DefaultTertiaryWeaponClass = AHeavyAxe::StaticClass();
+	bIsCameraUnderRiver = false;
+	CameraDepthUnderRiver = 0.0f;
 }
 
 // Called when the game starts or when spawned
@@ -61,7 +93,8 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 	bIsSliding = false;
 	bIsSprinting = false;
 	
-	Health = MaxHealth;
+	HitsRemaining = FMath::Clamp(MaxHits, 0, MaxHits);
+	UpdateHealthHUD();
 
 	if (SpawnerClass && !Spawner)
 	{
@@ -96,13 +129,22 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 
 	if (WeaponSelector)
 	{
-		TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass = ALanceCPP::StaticClass();
-		if (Spawner && Spawner->ProjectileActor)
+		WeaponSelector->InitializeWeaponSelector(
+			Spawner,
+			DefaultPrimaryWeaponClass,
+			DefaultSecondaryWeaponClass,
+			DefaultTertiaryWeaponClass);
+	}
+	
+	TArray<AActor*> FoundEnemies;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemyParent::StaticClass(), FoundEnemies);
+
+	for (AActor* FoundActor : FoundEnemies)
+	{
+		if (AEnemyParent* Enemy = Cast<AEnemyParent>(FoundActor))
 		{
-			DefaultPrimaryWeaponClass = Spawner->ProjectileActor;
+			Enemy->OnDeathForScore.AddDynamic(this, &AJarl_ThirdPersonCharacter_CPP::UpdateScore);
 		}
-		WeaponSelector->InitializeWeaponSelector(Spawner, DefaultPrimaryWeaponClass, DefaultSecondaryWeaponClass);
-		WeaponSelector->AddWeaponToHotbar(DefaultTertiaryWeaponClass);
 	}
 }
 
@@ -111,6 +153,7 @@ void AJarl_ThirdPersonCharacter_CPP::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	UpdateCameraRiverOverlap();
 }
 
 // Called to bind functionality to input
@@ -131,9 +174,15 @@ void AJarl_ThirdPersonCharacter_CPP::SetupPlayerInputComponent(UInputComponent* 
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &AJarl_ThirdPersonCharacter_CPP::PlayerShoot);
 	}
 
+	FInputKeyBinding& PauseBindingEscape = PlayerInputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::TogglePause);
+	PauseBindingEscape.bExecuteWhenPaused = true;
+
+	FInputKeyBinding& PauseBindingP = PlayerInputComponent->BindKey(EKeys::P, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::TogglePause);
+	PauseBindingP.bExecuteWhenPaused = true;
+
 	PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectPrimaryWeapon);
 	PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectSecondaryWeapon);
-	PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectTertiaryWeapon);
+	PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectThirdWeapon);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::Move(const FInputActionValue& Value)
@@ -238,12 +287,31 @@ void AJarl_ThirdPersonCharacter_CPP::StopSprint()
 
 void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 {
-	if (Spawner)
+		if (Spawner)
+		{
+			const FVector SpawnLocation = FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * 100.0f) + (FollowCamera->GetRightVector() * 30.f + FVector(0.f,0.f,-20.f));
+			const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : FollowCamera->GetComponentRotation();
+			Spawner->Fire(SpawnLocation, SpawnRotation);
+		
+			if (Spawner && Spawner->ProjectileActor)
+			{
+				if (const AProjectile_Base* ProjectileSounds = Spawner->ProjectileActor->GetDefaultObject<AProjectile_Base>())
+				{
+					UGameplayStatics::PlaySoundAtLocation(this, ProjectileSounds->ThrowSound, GetActorLocation());
+				}
+			}
+		}
+}
+
+void AJarl_ThirdPersonCharacter_CPP::TogglePause()
+{
+	if (!GetWorld())
 	{
-		const FVector SpawnLocation = GetActorLocation() + (GetActorForwardVector() * 100.f) + FVector(0.f, 0.f, 50.f);
-		const FRotator SpawnRotation = Controller ? Controller->GetControlRotation() : GetActorRotation();
-		Spawner->Fire(SpawnLocation, SpawnRotation);
+		return;
 	}
+
+	const bool bIsPaused = UGameplayStatics::IsGamePaused(this);
+	UGameplayStatics::SetGamePaused(this, !bIsPaused);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::SelectPrimaryWeapon()
@@ -256,19 +324,101 @@ void AJarl_ThirdPersonCharacter_CPP::SelectSecondaryWeapon()
 	SelectWeaponSlot(1);
 }
 
-void AJarl_ThirdPersonCharacter_CPP::SelectTertiaryWeapon()
+void AJarl_ThirdPersonCharacter_CPP::SelectThirdWeapon()
 {
 	SelectWeaponSlot(2);
 }
 
-void AJarl_ThirdPersonCharacter_CPP::UpdateScore(int32 Amount)
+void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 {
 	Score += Amount;
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			reinterpret_cast<uint64>(this) + 3,
+			2.0f,
+			FColor::Yellow,
+			FString::Printf(TEXT("Amount: %.2f | Score: %.2f"), Amount, Score));
+	}
+
+	const APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (PlayerController)
+	{
+		AHUD* HUD = PlayerController->GetHUD();
+		if (HUD)
+		{
+			const FObjectProperty* ScoreWidgetProperty = FindFProperty<FObjectProperty>(HUD->GetClass(), TEXT("UI_ScoreRef"));
+			if (ScoreWidgetProperty)
+			{
+				UObject* ScoreWidgetObject = ScoreWidgetProperty->GetObjectPropertyValue_InContainer(HUD);
+				UUserWidget* ScoreWidget = Cast<UUserWidget>(ScoreWidgetObject);
+				if (ScoreWidget)
+				{
+					UFunction* ChangeScoreFunction = ScoreWidget->FindFunction(TEXT("ChangeScore"));
+					if (ChangeScoreFunction)
+					{
+						const float CurrentScoreValue = Score;
+						TArray<uint8> ParamBuffer;
+						ParamBuffer.SetNumZeroed(ChangeScoreFunction->ParmsSize);
+
+						if (FProperty* ScoreParamProperty = ChangeScoreFunction->FindPropertyByName(TEXT("Score")))
+						{
+							if (FFloatProperty* FloatProperty = CastField<FFloatProperty>(ScoreParamProperty))
+							{
+								FloatProperty->SetFloatingPointPropertyValue(ParamBuffer.GetData(), CurrentScoreValue);
+							}
+							else if (FDoubleProperty* DoubleProperty = CastField<FDoubleProperty>(ScoreParamProperty))
+							{
+								DoubleProperty->SetFloatingPointPropertyValue(ParamBuffer.GetData(), static_cast<double>(CurrentScoreValue));
+							}
+						}
+
+						ScoreWidget->ProcessEvent(ChangeScoreFunction, ParamBuffer.GetData());
+					}
+				}
+			}
+		}
+	}
+
+	if (bIsCyclops)
+	{
+		UMyGameInstance*GI = Cast<UMyGameInstance>(GetGameInstance());
+		if (GI)
+		{
+			GI->EndGameTimer = GameTimer;
+			GI->EndScore = Score;
+		}
+		
+		UGameplayStatics::OpenLevel(this, FName("EndScreen"));
+	}
 }
 
-bool AJarl_ThirdPersonCharacter_CPP::AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass)
+float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	return WeaponSelector ? WeaponSelector->AddWeaponToHotbar(WeaponClass) : false;
+	if (DamageAmount <= 0.0f || HitsRemaining <= 0)
+	{
+		return 0.0f;
+	}
+
+	HitsRemaining = FMath::Max(0, HitsRemaining - 1);
+	UpdateHealthHUD();
+
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			reinterpret_cast<uint64>(this) + 1,
+			2.0f,
+			FColor::Red,
+			FString::Printf(TEXT("Hits Remaining: %d"), HitsRemaining));
+	}
+
+	if (HitsRemaining <= 0)
+	{
+		HandlePlayerDeath();
+	}
+
+	return 1.0f;
 }
 
 bool AJarl_ThirdPersonCharacter_CPP::SelectWeaponSlot(int32 SlotIndex)
@@ -284,4 +434,117 @@ TSubclassOf<AProjectile_Base> AJarl_ThirdPersonCharacter_CPP::GetWeaponInSlot(in
 int32 AJarl_ThirdPersonCharacter_CPP::GetActiveWeaponSlot() const
 {
 	return WeaponSelector ? WeaponSelector->GetActiveWeaponSlot() : INDEX_NONE;
+}
+
+bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
+{
+	CameraDepthUnderRiver = 0.0f;
+	bIsCameraUnderRiver = false;
+
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (!PlayerController)
+	{
+		return false;
+	}
+
+	FVector CameraLocation;
+	FRotator CameraRotation;
+	PlayerController->GetPlayerViewPoint(CameraLocation, CameraRotation);
+
+	for (TActorIterator<AWaterBodyRiver> RiverIt(GetWorld()); RiverIt; ++RiverIt)
+	{
+		AWaterBodyRiver* River = *RiverIt;
+		if (!River)
+		{
+			continue;
+		}
+
+		UWaterBodyComponent* WaterBodyComponent = River->GetWaterBodyComponent();
+		if (!WaterBodyComponent)
+		{
+			continue;
+		}
+
+		const TValueOrError<FWaterBodyQueryResult, EWaterBodyQueryError> QueryResult =
+			WaterBodyComponent->TryQueryWaterInfoClosestToWorldLocation(
+				CameraLocation,
+				EWaterBodyQueryFlags::ComputeLocation | EWaterBodyQueryFlags::ComputeImmersionDepth);
+		if (!QueryResult.HasValue())
+		{
+			continue;
+		}
+
+		const FWaterBodyQueryResult& WaterInfo = QueryResult.GetValue();
+		if (WaterInfo.IsInWater() && !WaterInfo.IsInExclusionVolume())
+		{
+			bIsCameraUnderRiver = true;
+			if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(
+					reinterpret_cast<uint64>(this),
+					0.0f,
+					FColor::Cyan,
+					FString::Printf(TEXT("Camera under water")));
+			}
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void AJarl_ThirdPersonCharacter_CPP::UpdateHealthHUD() const
+{
+	const APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	AHUD* HUD = PlayerController->GetHUD();
+	if (!HUD)
+	{
+		return;
+	}
+
+	const FObjectProperty* HealthWidgetProperty = FindFProperty<FObjectProperty>(HUD->GetClass(), TEXT("UI_HealthRef"));
+	if (!HealthWidgetProperty)
+	{
+		return;
+	}
+
+	UObject* HealthWidgetObject = HealthWidgetProperty->GetObjectPropertyValue_InContainer(HUD);
+	UUserWidget* HealthWidget = Cast<UUserWidget>(HealthWidgetObject);
+	if (!HealthWidget)
+	{
+		return;
+	}
+
+	UFunction* RefreshHeartsFunction = HealthWidget->FindFunction(TEXT("RefreshHearts"));
+	if (!RefreshHeartsFunction)
+	{
+		return;
+	}
+
+	HealthWidget->ProcessEvent(RefreshHeartsFunction, nullptr);
+}
+
+void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
+{
+	if (GEngine)
+	{
+		
+		UMyGameInstance*GI = Cast<UMyGameInstance>(GetGameInstance());
+		if (GI)
+		{
+			GI->EndGameTimer = GameTimer;
+		}
+		UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
+		GEngine->AddOnScreenDebugMessage(
+			reinterpret_cast<uint64>(this) + 2,
+			3.0f,
+			FColor::Red,
+			TEXT("Player defeated"));
+		
+	}
 }

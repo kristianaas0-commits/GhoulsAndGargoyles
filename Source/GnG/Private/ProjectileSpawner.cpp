@@ -4,6 +4,7 @@
 #include "Projectile_Base.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
+#include "TimerManager.h"
 
 
 // Sets default values
@@ -22,6 +23,7 @@ AProjectileSpawner::AProjectileSpawner()
 	SpawnerMesh->CanCharacterStepUpOn = ECB_No;
 	SpawnerMesh->SetSimulatePhysics(false);
 
+	DefaultFireConfig.FireCooldownSeconds = 0.0f;
 }
 
 // Called when the game starts or when spawned
@@ -37,11 +39,100 @@ void AProjectileSpawner::Tick(float DeltaTime)
 
 }
 
+const FWeaponFireConfig& AProjectileSpawner::GetFireConfigFor(TSubclassOf<AProjectile_Base> WeaponClass) const
+{
+	if (const FWeaponFireConfig* FoundConfig = WeaponFireConfigs.Find(WeaponClass))
+	{
+		return *FoundConfig;
+	}
+
+	return DefaultFireConfig;
+}
+
+bool AProjectileSpawner::CanFireWeapon(TSubclassOf<AProjectile_Base> WeaponClass) const
+{
+	if (!WeaponClass)
+	{
+		return false;
+	}
+
+	if (const bool* FoundCanFire = WeaponCanFireStates.Find(WeaponClass))
+	{
+		return *FoundCanFire;
+	}
+
+	return true;
+}
+
+void AProjectileSpawner::EnsureWeaponFireStateInitialized(TSubclassOf<AProjectile_Base> WeaponClass)
+{
+	if (!WeaponClass || WeaponCanFireStates.Contains(WeaponClass))
+	{
+		return;
+	}
+
+	// New weapon classes start ready to fire the first time the player switches to them.
+	WeaponCanFireStates.Add(WeaponClass, true);
+}
+
+void AProjectileSpawner::StartFireCooldown(TSubclassOf<AProjectile_Base> WeaponClass)
+{
+	if (!WeaponClass || !GetWorld())
+	{
+		return;
+	}
+
+	const float CooldownSeconds = FMath::Max(0.0f, GetFireConfigFor(WeaponClass).FireCooldownSeconds);
+	if (CooldownSeconds <= 0.0f)
+	{
+		WeaponCanFireStates.FindOrAdd(WeaponClass) = true;
+		return;
+	}
+
+	// Mark just this weapon as blocked; swapping weapons should not pause or reset other cooldowns.
+	WeaponCanFireStates.FindOrAdd(WeaponClass) = false;
+
+	FTimerHandle& TimerHandle = WeaponCooldownTimerHandles.FindOrAdd(WeaponClass);
+	GetWorldTimerManager().ClearTimer(TimerHandle);
+	// When the timer completes, this weapon class becomes available again.
+	GetWorldTimerManager().SetTimer(
+		TimerHandle,
+		FTimerDelegate::CreateUObject(this, &AProjectileSpawner::ResetWeaponCanFire, WeaponClass),
+		CooldownSeconds,
+		false);
+}
+
+void AProjectileSpawner::ResetWeaponCanFire(TSubclassOf<AProjectile_Base> WeaponClass)
+{
+	if (!WeaponClass)
+	{
+		return;
+	}
+
+	WeaponCanFireStates.FindOrAdd(WeaponClass) = true;
+}
+
+bool AProjectileSpawner::CanFireCurrentWeapon() const
+{
+	return CanFireWeapon(ProjectileActor);
+}
+
 void AProjectileSpawner::Fire(const FVector& SpawnLocation, const FRotator& SpawnRotation)
+{
+	TryFire(SpawnLocation, SpawnRotation);
+}
+
+bool AProjectileSpawner::TryFire(const FVector& SpawnLocation, const FRotator& SpawnRotation)
 {
 	if (!ProjectileActor || !GetWorld())
 	{
-		return;
+		return false;
+	}
+
+	EnsureWeaponFireStateInitialized(ProjectileActor);
+	if (!CanFireWeapon(ProjectileActor))
+	{
+		return false;
 	}
 
 	// Forward the owner and instigator so damage can be attributed back to the player.
@@ -52,4 +143,8 @@ void AProjectileSpawner::Fire(const FVector& SpawnLocation, const FRotator& Spaw
 
 	// Spawn using the camera-based transform provided by the character rather than the spawner mesh rotation.
 	GetWorld()->SpawnActor<AProjectile_Base>(ProjectileActor, SpawnLocation, SpawnRotation, SpawnParameters);
+
+	// A successful shot immediately starts cooldown for the current weapon class.
+	StartFireCooldown(ProjectileActor);
+	return true;
 }

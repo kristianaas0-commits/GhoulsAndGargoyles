@@ -8,6 +8,7 @@
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "GameFramework/DamageType.h"
+#include "Kismet/GameplayStatics.h"
 
 AHeavyAxe::AHeavyAxe()
 {
@@ -113,6 +114,11 @@ void AHeavyAxe::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* Other
 	if (!OtherActor || OtherActor == this || OtherActor == GetOwner())
 	{
 		return;
+	}
+
+	if (HitSounds)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, HitSounds, Hit.ImpactPoint);
 	}
 	
 	//checks for walls,  floors and props

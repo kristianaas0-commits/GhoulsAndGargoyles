@@ -18,14 +18,10 @@ public:
 	// Sets default values for this actor's properties
 	AWeaponselector();
 
-	// Connects the selector to the player's spawner and seeds the initial hotbar state.
+	// Connects the selector to the player's spawner and seeds the fixed hotbar layout.
 	UFUNCTION(BlueprintCallable, Category = "Hotbar")
-	void InitializeWeaponSelector(AProjectileSpawner* InSpawner, TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass,
-		TSubclassOf<AProjectile_Base> DefaultSecondaryWeaponClass);
-
-	// Adds a weapon to the next free slot, or rotates replacements once the hotbar is full.
-	UFUNCTION(BlueprintCallable, Category = "Hotbar")
-	bool AddWeaponToHotbar(TSubclassOf<AProjectile_Base> WeaponClass);
+	void InitializeWeaponSelector(AProjectileSpawner* InSpawner, TSubclassOf<AProjectile_Base> PrimaryWeaponClass,
+		TSubclassOf<AProjectile_Base> SecondaryWeaponClass, TSubclassOf<AProjectile_Base> TertiaryWeaponClass);
 
 	// Makes the requested slot active and updates the shared projectile spawner.
 	UFUNCTION(BlueprintCallable, Category = "Hotbar")
@@ -53,23 +49,16 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hotbar")
 	int32 ActiveWeaponSlot = INDEX_NONE;
 
-	// When all slots are full, new pickups overwrite this slot and then advance.
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hotbar")
-	int32 NextReplacementSlot = 0;
-
 protected:
 	// Shared projectile spawner that actually fires the currently selected weapon class.
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Hotbar")
 	TObjectPtr<AProjectileSpawner> Spawner = nullptr;
 
 private:
-	// TEMP TESTING: increase this back to 2 when removing the temporary HeavyAxe slot.
+	// Fixed hotbar slot count: 1 = Lance, 2 = Torch, 3 = HeavyAxe.
 	static constexpr int32 HotbarSlotCount = 3;
 
 	// Pushes the active slot's weapon class into the projectile spawner.
 	void ApplySelectedWeaponToSpawner();
-
-	// Returns the first empty slot, or INDEX_NONE when every slot is occupied.
-	int32 GetNextSlotToFill() const;
 
 };

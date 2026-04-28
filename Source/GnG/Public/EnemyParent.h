@@ -4,7 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Components/StateTreeComponent.h"
 #include "EnemyParent.generated.h"
+
+// Declaring the event that updates the score when an enemy dies.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnDeathForScore, float, Score, bool, bIsCyclops);
 
 UCLASS()
 class GNG_API AEnemyParent : public ACharacter
@@ -25,18 +29,76 @@ protected:
 		class AController* EventInstigator,
 		AActor* DamageCauser
 	) override;
+
+	UFUNCTION()
+	void DestroySelf(); // Function called after a delay, destroys self
 	
-	UPROPERTY(EditAnywhere)
-	float DefaultHealth;
+	UFUNCTION()
+	void ResetMatrerial(); // Function called after a delay, removes the overlay matrial
 	
-	UPROPERTY(BlueprintReadOnly)
-    float CurrentHealth;
-		
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	
+	//Variables for delay
+	FTimerHandle DelayTimerHandle;
+	FTimerHandle DestroyTimerHandle;
+	
+	/*
+	 * StateTree
+	 */
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AI")
+	UStateTreeComponent* StateTreeComponent; // State Tree
+	
+	/*
+	 * Variables for When hit
+	*/
+	
+	UPROPERTY(EditAnywhere, Category="Health") 
+	float DefaultHealth; //Max health
+	
+	UPROPERTY(BlueprintReadOnly, Category="Health")
+    float CurrentHealth; // Current health
+	
+	UPROPERTY(EditAnywhere, Category = "Health")
+	USoundBase* HitSound; // Sound that plays if enemy get hit
+	
+	UPROPERTY(EditAnywhere, Category="Health")
+	UMaterial* HitMaterial; // Overlay material to visually represent when the enemy get hit
+	
+	UPROPERTY(EditAnywhere, Category="Health")
+	UMaterial* SeeThruMaterial; // Needed for removing the overlay material
+	
+	
+	/*
+	 * Variables for when the enemy dies	
+	*/
+	
+	UPROPERTY(BlueprintAssignable, Category = "Death")
+	FOnDeathForScore OnDeathForScore; // Event
+	
+	UFUNCTION(BlueprintCallable, Category = "Death")
+	void DeathEvent(float Score, bool bIsCyclopsValue); // Function to call Event broadcast
+	
+	UPROPERTY(EditAnywhere, Category="Death")
+	UAnimSequence* DeathAnimation; // Death animation
 
+	UPROPERTY(EditAnywhere, Category="Death")
+	float DeathAnimationDuration; // Wait between the damage being applied and the actor being destroyed
+	
+	UPROPERTY(EditAnywhere, Category = "Death")
+    USoundBase* DeathSound; // Death sound
+	
+	UPROPERTY(EditAnywhere, Category="Death")
+	bool bIsDead; // Bool 
+
+	UPROPERTY(EditAnywhere, Category="Death")
+    float KillingScore; // Score gained for killing the enemy
+	
+	UPROPERTY(EditAnywhere, Category="Death")
+	bool bIsCyclops;
 };

@@ -18,7 +18,8 @@ public class GnG : ModuleRules
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"UMG",
-			"Slate"
+			"Slate",
+			"Water"
 		]);
 
 		// Uncomment if you are using Slate UI
