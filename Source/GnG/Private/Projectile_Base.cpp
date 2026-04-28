@@ -135,8 +135,4 @@ void AProjectile_Base::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor
 	Destroy();
 }
 
-void AProjectile_Base::Reload()
-{
-	
-}
 
