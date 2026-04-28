@@ -63,14 +63,14 @@ float AEnemyParent::TakeDamage(
 	;
 	
 	// Checking if dead
-	if (CurrentHealth <= 0)
+	if (CurrentHealth <= 0 && bIsDead==false)
 	{
 		
 		DeathEvent(KillingScore, bIsCyclops); // Calling Score Event function
 		
 		StateTreeComponent->StopLogic(""); // Stops the logic in the StateTree
 		
-		GetCharacterMovement()->StopActiveMovement(); // Stops the movement
+		GetCharacterMovement()->DisableMovement(); // Stops the movement
 		
 		bIsDead = true; 
 		
@@ -85,7 +85,7 @@ float AEnemyParent::TakeDamage(
 		
         // Destroys the Actor after the animation is finished
 		GetWorldTimerManager().SetTimer(
-			DelayTimerHandle,
+			DestroyTimerHandle,
 			this,
 			&AEnemyParent::DestroySelf,
 			DeathAnimationDuration,

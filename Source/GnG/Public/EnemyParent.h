@@ -45,6 +45,7 @@ public:
 	
 	//Variables for delay
 	FTimerHandle DelayTimerHandle;
+	FTimerHandle DestroyTimerHandle;
 	
 	/*
 	 * StateTree
