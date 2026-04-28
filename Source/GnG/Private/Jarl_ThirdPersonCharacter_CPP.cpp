@@ -39,8 +39,6 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	Score = 0;
 	MaxHits = 3;
 	HitsRemaining = MaxHits;
-	Health = static_cast<float>(HitsRemaining);
-	MaxHealth = static_cast<float>(MaxHits);
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
 
@@ -95,7 +93,6 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 	bIsSprinting = false;
 	
 	HitsRemaining = FMath::Clamp(MaxHits, 0, MaxHits);
-	RefreshHealthState();
 	UpdateHealthHUD();
 
 	if (SpawnerClass && !Spawner)
@@ -402,7 +399,6 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 	}
 
 	HitsRemaining = FMath::Max(0, HitsRemaining - 1);
-	RefreshHealthState();
 	UpdateHealthHUD();
 
 	if (GEngine)
@@ -492,16 +488,6 @@ bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
 	}
 
 	return false;
-}
-
-void AJarl_ThirdPersonCharacter_CPP::RefreshHealthState()
-{
-	MaxHits = FMath::Max(1, MaxHits);
-	HitsRemaining = FMath::Clamp(HitsRemaining, 0, MaxHits);
-
-	// Keep the old float values in sync so existing Blueprint widgets keep working.
-	MaxHealth = static_cast<float>(MaxHits);
-	Health = static_cast<float>(HitsRemaining);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::UpdateHealthHUD() const
