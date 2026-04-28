@@ -58,7 +58,7 @@ public:
 	 * Variables for When hit
 	*/
 	
-	UPROPERTY(EditAnywhere, Category="Health") 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Health") 
 	float DefaultHealth; //Max health
 	
 	UPROPERTY(BlueprintReadOnly, Category="Health")

@@ -14,8 +14,7 @@ AEnemyParent::AEnemyParent()
 	
 	// Setting some variables
 	bIsDead = false;
-	DefaultHealth = 100;
-	CurrentHealth = DefaultHealth;
+	CurrentHealth = 100;
 	
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent")); // Creates the StateTree subobject
 }
@@ -24,6 +23,8 @@ AEnemyParent::AEnemyParent()
 void AEnemyParent::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	CurrentHealth = DefaultHealth;
 }
 
 float AEnemyParent::TakeDamage(
