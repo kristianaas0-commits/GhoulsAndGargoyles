@@ -168,4 +168,9 @@ public:
 	
 	UPROPERTY(EditAnywhere)
 	bool bTakesDamage;
+	
+	FTimerHandle WinTimerHandle;
+	
+	UFUNCTION()
+	void ChangeSceene();
 };

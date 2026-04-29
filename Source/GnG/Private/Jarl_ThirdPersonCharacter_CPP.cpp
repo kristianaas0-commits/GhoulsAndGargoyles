@@ -390,8 +390,14 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 			GI->EndScore = Score;
 		}
 		
+		GetWorldTimerManager().SetTimer(
+		WinTimerHandle,
+		this,
+		&AJarl_ThirdPersonCharacter_CPP::ChangeSceene,
+		5.f,
+		false)
+	;
 		
-		UGameplayStatics::OpenLevel(this, FName("EndScreen"));
 	}
 }
 
@@ -435,6 +441,11 @@ TSubclassOf<AProjectile_Base> AJarl_ThirdPersonCharacter_CPP::GetWeaponInSlot(in
 int32 AJarl_ThirdPersonCharacter_CPP::GetActiveWeaponSlot() const
 {
 	return WeaponSelector ? WeaponSelector->GetActiveWeaponSlot() : INDEX_NONE;
+}
+
+void AJarl_ThirdPersonCharacter_CPP::ChangeSceene()
+{
+	UGameplayStatics::OpenLevel(this, FName("EndScreen"));
 }
 
 bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
