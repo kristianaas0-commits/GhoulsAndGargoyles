@@ -14,7 +14,6 @@ AEnemyParent::AEnemyParent()
 	
 	// Setting some variables
 	bIsDead = false;
-	DefaultHealth = 100;
 	CurrentHealth = DefaultHealth;
 	
 	StateTreeComponent = CreateDefaultSubobject<UStateTreeComponent>(TEXT("StateTreeComponent")); // Creates the StateTree subobject

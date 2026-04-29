@@ -390,6 +390,7 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 			GI->EndScore = Score;
 		}
 		
+		
 		UGameplayStatics::OpenLevel(this, FName("EndScreen"));
 	}
 }
@@ -539,7 +540,10 @@ void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
 		{
 			GI->EndGameTimer = GameTimer;
 		}
-		UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
+		if (bTakesDamage)
+		{
+			UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
+		}
 		GEngine->AddOnScreenDebugMessage(
 			reinterpret_cast<uint64>(this) + 2,
 			3.0f,
