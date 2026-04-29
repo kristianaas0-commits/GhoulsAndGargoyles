@@ -458,7 +458,14 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 			GI->EndScore = Score;
 		}
 		
-		UGameplayStatics::OpenLevel(this, FName("EndScreen"));
+		GetWorldTimerManager().SetTimer(
+		WinTimerHandle,
+		this,
+		&AJarl_ThirdPersonCharacter_CPP::ChangeSceene,
+		5.f,
+		false)
+	;
+		
 	}
 }
 
@@ -530,6 +537,11 @@ TSubclassOf<AProjectile_Base> AJarl_ThirdPersonCharacter_CPP::GetWeaponInSlot(in
 int32 AJarl_ThirdPersonCharacter_CPP::GetActiveWeaponSlot() const
 {
 	return WeaponSelector ? WeaponSelector->GetActiveWeaponSlot() : INDEX_NONE;
+}
+
+void AJarl_ThirdPersonCharacter_CPP::ChangeSceene()
+{
+	UGameplayStatics::OpenLevel(this, FName("EndScreen"));
 }
 
 bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
@@ -639,7 +651,10 @@ void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
 		{
 			GI->EndGameTimer = GameTimer;
 		}
-		UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
+		if (bTakesDamage)
+		{
+			UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
+		}
 		GEngine->AddOnScreenDebugMessage(
 			reinterpret_cast<uint64>(this) + 2,
 			3.0f,

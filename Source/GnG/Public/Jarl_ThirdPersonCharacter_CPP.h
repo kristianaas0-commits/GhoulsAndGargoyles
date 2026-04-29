@@ -186,4 +186,11 @@ public:
 	UPROPERTY(BlueprintReadWrite, Category="Stats")
 	float GameTimer;
 	
+	UPROPERTY(EditAnywhere)
+	bool bTakesDamage;
+	
+	FTimerHandle WinTimerHandle;
+	
+	UFUNCTION()
+	void ChangeSceene();
 };
