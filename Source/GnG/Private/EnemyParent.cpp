@@ -3,6 +3,7 @@
 
 #include "EnemyParent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/CapsuleComponent.h"
 #include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -66,7 +67,6 @@ float AEnemyParent::TakeDamage(
 	// Checking if dead
 	if (CurrentHealth <= 0 && bIsDead==false)
 	{
-		
 		DeathEvent(KillingScore, bIsCyclops); // Calling Score Event function
 		
 		StateTreeComponent->StopLogic(""); // Stops the logic in the StateTree
@@ -74,6 +74,8 @@ float AEnemyParent::TakeDamage(
 		GetCharacterMovement()->DisableMovement(); // Stops the movement
 		
 		bIsDead = true; 
+		
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		
 		// Play Death Sound
 		UGameplayStatics::PlaySoundAtLocation(
