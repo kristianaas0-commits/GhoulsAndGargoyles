@@ -107,12 +107,6 @@ void AProjectile_Base::OnProjectileOverlap(UPrimitiveComponent* OverlappedCompon
 	FDamageEvent DamageEvent(UDamageType::StaticClass());
 	OtherActor->TakeDamage(Damage, DamageEvent, InstigatorController, this);
 
-	// Play the configured throw sound before the projectile destroys itself.
-	if (HitSounds)
-	{
-		PlaySoundAtWorldLocation(this, HitSounds, SweepResult.ImpactPoint);
-	}
-
 	Destroy();
 }
 
