@@ -67,15 +67,15 @@ float AEnemyParent::TakeDamage(
 	// Checking if dead
 	if (CurrentHealth <= 0 && bIsDead==false)
 	{
+		bIsDead = true; 
+		
 		DeathEvent(KillingScore, bIsCyclops); // Calling Score Event function
 		
 		StateTreeComponent->StopLogic(""); // Stops the logic in the StateTree
 		
 		GetCharacterMovement()->DisableMovement(); // Stops the movement
 		
-		bIsDead = true; 
-		
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Turns the collision off for the actor after the have been killed 
 		
 		// Play Death Sound
 		UGameplayStatics::PlaySoundAtLocation(
@@ -84,7 +84,7 @@ float AEnemyParent::TakeDamage(
 			GetActorLocation()
 			);
 		
-		GetMesh()->PlayAnimation(DeathAnimation, false); // Play death Animation
+		GetMesh()->PlayAnimation(DeathAnimation, false); // Play Death Animation
 		
         // Destroys the Actor after the animation is finished
 		GetWorldTimerManager().SetTimer(

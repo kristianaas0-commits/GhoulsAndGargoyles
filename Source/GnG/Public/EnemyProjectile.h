@@ -32,6 +32,14 @@ protected:
 		const FHitResult& SweepResult
 		);
 	
+	UFUNCTION()
+	virtual void OnProjectileHit(
+		UPrimitiveComponent* HitComponent, 
+		AActor* OtherActor, 
+		UPrimitiveComponent* OtherComp, 
+		FVector NormalImpulse, 
+		const FHitResult& Hit);
+	
 	// For delay function
 	UFUNCTION()
 	void DestroySelf();
