@@ -3,6 +3,7 @@
 
 #include "EnemyParent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/CapsuleComponent.h"
 #include "TimerManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -66,6 +67,7 @@ float AEnemyParent::TakeDamage(
 	// Checking if dead
 	if (CurrentHealth <= 0 && bIsDead==false)
 	{
+		bIsDead = true; 
 		
 		DeathEvent(KillingScore, bIsCyclops); // Calling Score Event function
 		
@@ -73,7 +75,7 @@ float AEnemyParent::TakeDamage(
 		
 		GetCharacterMovement()->DisableMovement(); // Stops the movement
 		
-		bIsDead = true; 
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Turns the collision off for the actor after the have been killed 
 		
 		// Play Death Sound
 		UGameplayStatics::PlaySoundAtLocation(
@@ -82,7 +84,7 @@ float AEnemyParent::TakeDamage(
 			GetActorLocation()
 			);
 		
-		GetMesh()->PlayAnimation(DeathAnimation, false); // Play death Animation
+		GetMesh()->PlayAnimation(DeathAnimation, false); // Play Death Animation
 		
         // Destroys the Actor after the animation is finished
 		GetWorldTimerManager().SetTimer(

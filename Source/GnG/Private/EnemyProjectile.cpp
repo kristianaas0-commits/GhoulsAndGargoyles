@@ -3,6 +3,7 @@
 
 #include "EnemyProjectile.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/Character.h"
 #include "TimerManager.h"
 
 // Sets default values
@@ -14,22 +15,31 @@ AEnemyProjectile::AEnemyProjectile()
 	// Projectile Movement
 	ProjectileMovement=CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
 	
+	
 	// Collision Sphere
 	CollisionSphere=CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
-	CollisionSphere->InitSphereRadius(1.f);// Set the radius
-	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly); // Sets the type of collision
-	CollisionSphere->SetCollisionObjectType(ECC_Pawn); 
-	CollisionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	
 	RootComponent = CollisionSphere;
+	
+	CollisionSphere->InitSphereRadius(20.f);// Set the radius
+	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); // Sets the type of collision
+	CollisionSphere->SetCollisionObjectType(ECC_GameTraceChannel1);
+	CollisionSphere->SetCollisionResponseToAllChannels(ECR_Block);
+	CollisionSphere->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	CollisionSphere->SetGenerateOverlapEvents(true);
+	CollisionSphere->SetNotifyRigidBodyCollision(true);
+	
+	
 	
 	// OnBeginOverlap Event
 	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemyProjectile::OnOverlapBegin);
+	CollisionSphere->OnComponentHit.AddDynamic(this, &AEnemyProjectile::OnProjectileHit);
+	ProjectileMovement->UpdatedComponent = Mesh;
 	
 	//Mesh
 	Mesh=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-	
+	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Mesh->SetGenerateOverlapEvents(false);
 	Mesh->SetupAttachment(RootComponent); // Assign the mesh to the Collision Sphere
 	
 }	
@@ -39,7 +49,14 @@ void AEnemyProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// Destroys the projectile after a delau
+	// Collision ignores the shooter
+	if (AActor* OwnerActor=GetOwner())
+	{
+		CollisionSphere->IgnoreActorWhenMoving(OwnerActor, true);
+		Mesh->IgnoreActorWhenMoving(OwnerActor, true);
+	}
+	
+	// Destroys the projectile after a delaY
 	GetWorldTimerManager().SetTimer(
 			DelayTimerHandle,
 			this,
@@ -48,6 +65,14 @@ void AEnemyProjectile::BeginPlay()
 			false
 			);
 	
+	
+}
+
+// Called every frame
+void AEnemyProjectile::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
 }
 
 // Begin Overlap Event
@@ -59,8 +84,15 @@ void AEnemyProjectile::OnOverlapBegin(
 	bool bFromSweep, 
 	const FHitResult& SweepResult)
 {
-	// If the overlapping actor has the player tag
-	if (OtherActor && OtherActor->ActorHasTag(TEXT("Player")))
+	
+	if (!OtherActor || OtherActor == this || OtherActor == GetOwner())
+	{
+		return;
+	}
+	
+	// If the overlapping actor is the player character
+	ACharacter* PlayerChar = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+	if (OtherActor && PlayerChar && OtherActor == PlayerChar)
 	{
 		// Applies damage
 		UGameplayStatics::ApplyDamage(
@@ -70,20 +102,27 @@ void AEnemyProjectile::OnOverlapBegin(
 			this,
 			UDamageType::StaticClass()
 			);
-		
-		Destroy();// Destroys the projectile
 	}
+	
+	Destroy(); // Destroys the projectile
+}
+
+void AEnemyProjectile::OnProjectileHit(
+	UPrimitiveComponent* HitComponent, 
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, 
+	FVector NormalImpulse, 
+	const FHitResult& Hit)
+{
+	if (!OtherActor || OtherActor == this || OtherActor == GetOwner())
+	{
+		return;
+	}
+	
+	Destroy();
 }
 
 void AEnemyProjectile::DestroySelf()
 {
 	Destroy();
 }
-
-// Called every frame
-void AEnemyProjectile::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
-

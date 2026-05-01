@@ -223,10 +223,13 @@ public:
 	float GameTimer;
 	
 	UPROPERTY(EditAnywhere)
-	bool bTakesDamage;
+	bool bTakesDamage; // Debug
 	
-	FTimerHandle WinTimerHandle;
+	/*
+	 * Victory
+	 */
+	FTimerHandle WinTimerHandle; // Timer handle to delay the victory screen
 	
 	UFUNCTION()
-	void ChangeSceene();
+	void ChangeSceene(); // Function to change to the victory screen after a delay
 };
