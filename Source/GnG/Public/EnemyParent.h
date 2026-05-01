@@ -100,5 +100,5 @@ public:
     float KillingScore; // Score gained for killing the enemy
 	
 	UPROPERTY(EditAnywhere, Category="Death")
-	bool bIsCyclops;
+	bool bIsCyclops; // Is used to end the game
 };

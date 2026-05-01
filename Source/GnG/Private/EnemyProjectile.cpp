@@ -26,7 +26,6 @@ AEnemyProjectile::AEnemyProjectile()
 	CollisionSphere->SetCollisionResponseToAllChannels(ECR_Block);
 	CollisionSphere->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	//CollisionSphere->SetCollisionResponseToChannel(ECC_WorldDynamic,ECR_Block);
 	CollisionSphere->SetGenerateOverlapEvents(true);
 	CollisionSphere->SetNotifyRigidBodyCollision(true);
 	
