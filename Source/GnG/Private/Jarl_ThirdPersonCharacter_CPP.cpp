@@ -462,7 +462,7 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 		WinTimerHandle,
 		this,
 		&AJarl_ThirdPersonCharacter_CPP::ChangeSceene,
-		5.f,
+		4.f,
 		false)
 	;
 		
