@@ -125,9 +125,15 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 	DefaultGroundFriction = GetCharacterMovement()->GroundFriction;
 	DefaultWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
 	DefaultBraking = GetCharacterMovement()->BrakingDecelerationWalking;
+	DefaultCrouchedWalkSpeed = GetCharacterMovement()->MaxWalkSpeedCrouched;
 	
 	bIsSliding = false;
 	bIsSprinting = false;
+	bCanSlide = true;
+	SlideDirection = FVector::ZeroVector;
+	SlideInitialSpeed = 0.0f;
+	SlideTargetEndSpeed = 0.0f;
+	SlideElapsedTime = 0.0f;
 	
 	HitsRemaining = FMath::Clamp(HitsRemaining, 0, MaxHits);
 	ShieldsRemaining = FMath::Clamp(ShieldsRemaining, 0, MaxShields);
@@ -208,6 +214,8 @@ void AJarl_ThirdPersonCharacter_CPP::Tick(float DeltaTime)
 	{
 		UnderwaterTimer = 0.0f;
 	}
+
+	UpdateSlide(DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -274,24 +282,41 @@ void AJarl_ThirdPersonCharacter_CPP::StopJump()
 void AJarl_ThirdPersonCharacter_CPP::Slide()
 {
 	if (bIsSliding) return;
-	if (!GetCharacterMovement()->IsMovingOnGround()) return;
-	if (!bIsMoving) return;
-	
-	bIsSliding = true;
-
+	if (!bCanSlide) return;
 	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp->IsMovingOnGround()) return;
+	if (!bIsMoving) return;
+
+	const FVector HorizontalVelocity(GetVelocity().X, GetVelocity().Y, 0.0f);
+	const float CurrentSpeed = HorizontalVelocity.Size();
+	const float MinSlideStartSpeed = DefaultWalkSpeed * SlideMinStartSpeedFraction;
+	const float SprintSpeed = DefaultWalkSpeed * 1.8f;
+
+	if (CurrentSpeed < MinSlideStartSpeed) return;
+
+	bIsSliding = true;
+	bCanSlide = false;
+	SlideElapsedTime = 0.0f;
 
 	Crouch();
 
-	FVector VelocityDir = GetVelocity().GetSafeNormal();
+	SlideDirection = HorizontalVelocity.GetSafeNormal();
+	const float BurstFromCurrentSpeed = (CurrentSpeed * SlideStartSpeedMultiplier) + SlideStartSpeedBonus;
+	const float MaxSlideSpeed = SprintSpeed * SlideMaxSprintMultiplier;
+	SlideInitialSpeed = FMath::Clamp(
+		BurstFromCurrentSpeed,
+		CurrentSpeed,
+		MaxSlideSpeed);
+	SlideTargetEndSpeed = FMath::Max(DefaultWalkSpeed * SlideEndSpeedMultiplier, DefaultCrouchedWalkSpeed);
 
-	LaunchCharacter(VelocityDir * 1200.0f, true, true);
+	MoveComp->GroundFriction = SlideGroundFriction;
+	MoveComp->BrakingDecelerationWalking = SlideBrakingDeceleration;
+	MoveComp->MaxWalkSpeed = SlideInitialSpeed;
+	MoveComp->MaxWalkSpeedCrouched = SlideInitialSpeed;
+	MoveComp->Velocity = FVector(SlideDirection.X * SlideInitialSpeed, SlideDirection.Y * SlideInitialSpeed, MoveComp->Velocity.Z);
 
-	MoveComp->GroundFriction = 0.0f;
-	MoveComp->BrakingDecelerationWalking = 0.0f;
-	MoveComp->MaxWalkSpeed = DefaultWalkSpeed * 3.0f;
-
-	GetWorldTimerManager().SetTimer(SlideTimerHandle, this, &AJarl_ThirdPersonCharacter_CPP::StopSlide, 1.0f, false);
+	GetWorldTimerManager().SetTimer(SlideTimerHandle, this, &AJarl_ThirdPersonCharacter_CPP::StopSlide, SlideDuration, false);
+	GetWorldTimerManager().SetTimer(SlideCooldownTimerHandle, this, &AJarl_ThirdPersonCharacter_CPP::ResetSlideCooldown, SlideCooldown, false);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::StopSlide()
@@ -310,6 +335,7 @@ void AJarl_ThirdPersonCharacter_CPP::StopSlide()
 	{
 		MoveComp->MaxWalkSpeed = DefaultWalkSpeed;
 	}
+	MoveComp->MaxWalkSpeedCrouched = DefaultCrouchedWalkSpeed;
 	
 	MoveComp->GroundFriction = DefaultGroundFriction;
 	MoveComp->BrakingDecelerationWalking = DefaultBraking;
@@ -317,6 +343,10 @@ void AJarl_ThirdPersonCharacter_CPP::StopSlide()
 	GetWorldTimerManager().ClearTimer(SlideTimerHandle);
 
 	bIsSliding = false;
+	SlideDirection = FVector::ZeroVector;
+	SlideInitialSpeed = 0.0f;
+	SlideTargetEndSpeed = 0.0f;
+	SlideElapsedTime = 0.0f;
 }
 
 void AJarl_ThirdPersonCharacter_CPP::Sprint()
@@ -337,6 +367,39 @@ void AJarl_ThirdPersonCharacter_CPP::StopSprint()
 	{
 		GetCharacterMovement()->MaxWalkSpeed = DefaultWalkSpeed;
 	}
+}
+
+void AJarl_ThirdPersonCharacter_CPP::UpdateSlide(float DeltaTime)
+{
+	if (!bIsSliding)
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
+	if (!MoveComp || !MoveComp->IsMovingOnGround())
+	{
+		StopSlide();
+		return;
+	}
+
+	SlideElapsedTime += DeltaTime;
+	const float SlideAlpha = SlideDuration > 0.0f ? FMath::Clamp(SlideElapsedTime / SlideDuration, 0.0f, 1.0f) : 1.0f;
+	const float CurrentSlideSpeed = FMath::InterpEaseOut(SlideInitialSpeed, SlideTargetEndSpeed, SlideAlpha, 2.0f);
+	const FVector CurrentHorizontalVelocity(MoveComp->Velocity.X, MoveComp->Velocity.Y, 0.0f);
+	if (!CurrentHorizontalVelocity.IsNearlyZero())
+	{
+		SlideDirection = CurrentHorizontalVelocity.GetSafeNormal();
+	}
+
+	MoveComp->MaxWalkSpeed = CurrentSlideSpeed;
+	MoveComp->MaxWalkSpeedCrouched = CurrentSlideSpeed;
+	MoveComp->Velocity = FVector(SlideDirection.X * CurrentSlideSpeed, SlideDirection.Y * CurrentSlideSpeed, MoveComp->Velocity.Z);
+}
+
+void AJarl_ThirdPersonCharacter_CPP::ResetSlideCooldown()
+{
+	bCanSlide = true;
 }
 
 void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()

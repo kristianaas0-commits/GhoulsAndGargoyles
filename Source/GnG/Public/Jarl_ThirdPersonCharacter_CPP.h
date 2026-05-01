@@ -75,6 +75,33 @@ protected:
 	// Variables
 	UPROPERTY(EditAnywhere, Category="Movement")
 	bool bIsMoving;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
+	float SlideDuration = 0.8f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
+	float SlideMinStartSpeedFraction = 0.65f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
+	float SlideStartSpeedMultiplier = 1.18f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
+	float SlideMaxSprintMultiplier = 1.55f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
+	float SlideStartSpeedBonus = 90.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
+	float SlideEndSpeedMultiplier = 0.95f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
+	float SlideGroundFriction = 0.05f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
+	float SlideBrakingDeceleration = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
+	float SlideCooldown = 0.5f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float Score;
@@ -134,11 +161,20 @@ protected:
 	float DefaultGroundFriction;
 	float DefaultWalkSpeed;
 	float DefaultBraking;
+	float DefaultCrouchedWalkSpeed;
 	bool bIsSliding;
 	bool bIsSprinting;
+	bool bCanSlide;
 	FTimerHandle SlideTimerHandle;
+	FTimerHandle SlideCooldownTimerHandle;
+	FVector SlideDirection;
+	float SlideInitialSpeed;
+	float SlideTargetEndSpeed;
+	float SlideElapsedTime;
 
 	bool UpdateCameraRiverOverlap();
+	void UpdateSlide(float DeltaTime);
+	void ResetSlideCooldown();
 	void UpdateHealthHUD() const;
 	void UpdateShieldHUD() const;
 	void RefreshVitalHUD() const;
