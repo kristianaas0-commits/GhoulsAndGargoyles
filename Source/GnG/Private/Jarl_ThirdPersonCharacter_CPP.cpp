@@ -385,7 +385,7 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateSlide(float DeltaTime)
 
 	SlideElapsedTime += DeltaTime;
 	const float SlideAlpha = SlideDuration > 0.0f ? FMath::Clamp(SlideElapsedTime / SlideDuration, 0.0f, 1.0f) : 1.0f;
-	const float CurrentSlideSpeed = FMath::InterpEaseOut(SlideInitialSpeed, SlideTargetEndSpeed, SlideAlpha, 2.0f);
+	const float CurrentSlideSpeed = FMath::InterpEaseOut(SlideInitialSpeed, SlideTargetEndSpeed, SlideAlpha, 4.0f);
 	const FVector CurrentHorizontalVelocity(MoveComp->Velocity.X, MoveComp->Velocity.Y, 0.0f);
 	if (!CurrentHorizontalVelocity.IsNearlyZero())
 	{

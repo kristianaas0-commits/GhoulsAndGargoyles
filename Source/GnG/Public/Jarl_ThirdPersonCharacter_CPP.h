@@ -77,7 +77,7 @@ protected:
 	bool bIsMoving;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
-	float SlideDuration = 0.8f;
+	float SlideDuration = 0.55f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
 	float SlideMinStartSpeedFraction = 0.65f;
@@ -92,7 +92,7 @@ protected:
 	float SlideStartSpeedBonus = 90.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
-	float SlideEndSpeedMultiplier = 0.95f;
+	float SlideEndSpeedMultiplier = 0.45f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
 	float SlideGroundFriction = 0.05f;
