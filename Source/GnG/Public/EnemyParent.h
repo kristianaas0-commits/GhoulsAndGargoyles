@@ -65,7 +65,7 @@ public:
     float CurrentHealth; // Current health
 	
 	UPROPERTY(EditAnywhere, Category = "Health")
-	USoundBase* HitSound; // Sound that plays if enemy get hit
+	USoundBase* HitSound; // Sound that plays if the enemy get hit
 	
 	UPROPERTY(EditAnywhere, Category="Health")
 	UMaterial* HitMaterial; // Overlay material to visually represent when the enemy get hit
