@@ -21,6 +21,11 @@ protected:
 		FStateTreeExecutionContext& Context,
 		const FStateTreeTransitionResult& Transition
 	) override;
+
+	virtual void ExitState(
+		FStateTreeExecutionContext& Context,
+		const FStateTreeTransitionResult& Transition
+	) override;
 	
 	UFUNCTION()
 	void HitCheck();
@@ -41,16 +46,14 @@ public:
 	float WindUP; // Delay between the start of the animation to the attack
 	
 	UPROPERTY(EditAnywhere)
-	float AttackRange; // Range of the Attack
+	float AttackRange = 100; // Range of the Attack
 	
 	UPROPERTY(EditAnywhere)
-	float AttackDamage; 
+	float AttackDamage = 10; 
 	
 	UPROPERTY(EditAnywhere)
 	USoundBase* AttackSound; // Sound played at the start of the attack
 	
 	UPROPERTY(EditAnywhere)
 	UAnimationAsset* AttackAnim; // Anim played at the start of the Attack
-	
-	
 };

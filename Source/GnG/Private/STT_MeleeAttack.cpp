@@ -12,60 +12,84 @@ EStateTreeRunStatus USTT_MeleeAttack::EnterState(
 	FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition)
 {
+	Super::EnterState(Context, Transition);
+
+	if (!Character)
+	{
+		return EStateTreeRunStatus::Failed;
+	}
 	
 	UGameplayStatics::PlaySoundAtLocation(
 		this,
 		AttackSound,
-		Character->GetActorLocation()
-	);
-
+		Character->GetActorLocation());
+	
 	Character->GetMesh()->PlayAnimation(AttackAnim, false);
-
-	FVector CharacterLocation = Character->GetActorLocation();
-	FVector PlayerLocation = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0)->GetActorLocation();
-	FVector AttackRangeV = {AttackRange, AttackRange, 0};
-	AttackCenter = CharacterLocation + (PlayerLocation - CharacterLocation).Normalize() * AttackRangeV;
-
+	
 	GetWorld()->GetTimerManager().SetTimer(
 		DelayTimerHandle,
 		this,
 		&USTT_MeleeAttack::HitCheck,
 		WindUP,
 		false);
-	
-	FinishTask();
-	
-	//return EStateTreeRunStatus::Running;
-	return EStateTreeRunStatus::Succeeded;
+
+	return EStateTreeRunStatus::Running;
+}
+
+void USTT_MeleeAttack::ExitState(
+	FStateTreeExecutionContext& Context,
+	const FStateTreeTransitionResult& Transition)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DelayTimerHandle);
+	}
+
+	Super::ExitState(Context, Transition);
 }
 
 void USTT_MeleeAttack::HitCheck()
 {
+	ACharacter* PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+	if (!Character || !PlayerCharacter)
+	{
+		FinishTask(false);
+		return;
+	}
+
+	FVector CharacterLocation = Character->GetActorLocation();
+	FVector PlayerLocation = PlayerCharacter->GetActorLocation();
+	FVector Direction = (PlayerLocation - CharacterLocation).GetSafeNormal();
+	AttackCenter = CharacterLocation + Direction * AttackRange;
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_Pawn));
 	TArray<AActor*> OutActors;
 
 	UKismetSystemLibrary::SphereOverlapActors(
 		GetWorld(),
 		AttackCenter,
 		AttackRange,
-		TArray<TEnumAsByte<EObjectTypeQuery>>(),
+		ObjectTypes,
 		APawn::StaticClass(),
 		TArray<AActor*>(),
 		OutActors
 	);
-	
+
 	for (AActor* OutActor : OutActors)
 	{
-		if (OutActor == UGameplayStatics::GetPlayerCharacter(GetWorld(), 0))
+		if (OutActor == PlayerCharacter)
 		{
 			// Applies damage
 			UGameplayStatics::ApplyDamage(
-				OutActor,
+				PlayerCharacter,
 				AttackDamage,
 				nullptr,
 				Character,
 				UDamageType::StaticClass()
-				);
+			);
 		}
 	}
-}
 
+	FinishTask(true);
+}
