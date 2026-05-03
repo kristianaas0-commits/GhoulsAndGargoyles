@@ -14,6 +14,7 @@ class AWaterBodyRiver;
 class AController;
 class AActor;
 class UCameraComponent;
+class USoundBase;
 struct FInputActionValue;
 class UInputAction;
 class UInputMappingContext;
@@ -124,6 +125,15 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stats")
 	int32 ShieldsRemaining;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stats")
+	float PostHitInvulnerabilityDuration = 0.3f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
+	USoundBase* HitSoundA = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
+	USoundBase* HitSoundB = nullptr;
+
 	UPROPERTY(EditAnywhere, Category = "Weapons")
 	TSubclassOf<AProjectileSpawner> SpawnerClass;
 
@@ -179,6 +189,7 @@ protected:
 	void UpdateShieldHUD() const;
 	void RefreshVitalHUD() const;
 	void HandlePlayerDeath();
+	void ClearPostHitInvulnerability();
 	
 	
 	
@@ -224,11 +235,15 @@ public:
 	
 	UPROPERTY(EditAnywhere)
 	bool bTakesDamage; // Debug
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stats")
+	bool bIsPostHitInvulnerable;
 	
 	/*
 	 * Victory
 	 */
 	FTimerHandle WinTimerHandle; // Timer handle to delay the victory screen
+	FTimerHandle PostHitInvulnerabilityTimerHandle;
 	
 	UFUNCTION()
 	void ChangeSceene(); // Function to change to the victory screen after a delay
