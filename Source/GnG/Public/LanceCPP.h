@@ -16,7 +16,5 @@ class GNG_API ALanceCPP : public AProjectile_Base
 	
 public:
 	ALanceCPP();
-	
-	
-	
+
 };

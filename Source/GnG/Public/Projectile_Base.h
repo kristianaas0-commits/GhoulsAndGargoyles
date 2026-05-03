@@ -26,18 +26,7 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	
-	// Default Magazine
-	UPROPERTY(EditAnywhere, Category = "Magasine")
-	int32 MagazineSize = 30;
-	
-	UPROPERTY(EditAnywhere, Category = "Magasine")
-	int32 AmmoCount;
-	
-	UPROPERTY(EditAnywhere, Category = "Magasine")
-	float ReloadTIme = 2.0f;
-	bool bReload = false;
-	
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
