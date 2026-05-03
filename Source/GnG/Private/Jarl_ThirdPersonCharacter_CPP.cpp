@@ -78,6 +78,7 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	Spawner = nullptr;
 	WeaponSelector = nullptr;
 	UnderwaterTimer = 0.0f;
+	bIsPostHitInvulnerable = false;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(GetRootComponent());
@@ -545,15 +546,52 @@ void AJarl_ThirdPersonCharacter_CPP::AddShields(int32 ShieldAmount)
 
 float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (DamageAmount <= 0.0f || HitsRemaining <= 0)
+	if (DamageAmount <= 0.0f || HitsRemaining <= 0 || bIsPostHitInvulnerable)
 	{
 		return 0.0f;
 	}
+
+	auto PlayHitSound = [this]()
+	{
+		TArray<USoundBase*, TInlineAllocator<2>> AvailableHitSounds;
+		if (HitSoundA)
+		{
+			AvailableHitSounds.Add(HitSoundA);
+		}
+		if (HitSoundB)
+		{
+			AvailableHitSounds.Add(HitSoundB);
+		}
+
+		if (AvailableHitSounds.Num() > 0)
+		{
+			const int32 SelectedIndex = FMath::RandRange(0, AvailableHitSounds.Num() - 1);
+			UGameplayStatics::PlaySoundAtLocation(this, AvailableHitSounds[SelectedIndex], GetActorLocation());
+		}
+	};
+
+	auto StartPostHitInvulnerability = [this]()
+	{
+		if (PostHitInvulnerabilityDuration <= 0.0f)
+		{
+			return;
+		}
+
+		bIsPostHitInvulnerable = true;
+		GetWorldTimerManager().SetTimer(
+			PostHitInvulnerabilityTimerHandle,
+			this,
+			&AJarl_ThirdPersonCharacter_CPP::ClearPostHitInvulnerability,
+			PostHitInvulnerabilityDuration,
+			false);
+	};
 
 	if (ShieldsRemaining > 0)
 	{
 		ShieldsRemaining = FMath::Max(0, ShieldsRemaining - 1);
 		UpdateShieldHUD();
+		PlayHitSound();
+		StartPostHitInvulnerability();
 
 		if (GEngine)
 		{
@@ -569,6 +607,8 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 
 	HitsRemaining = FMath::Max(0, HitsRemaining - 1);
 	UpdateHealthHUD();
+	PlayHitSound();
+	StartPostHitInvulnerability();
 
 	if (GEngine)
 	{
@@ -585,6 +625,11 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 	}
 
 	return 1.0f;
+}
+
+void AJarl_ThirdPersonCharacter_CPP::ClearPostHitInvulnerability()
+{
+	bIsPostHitInvulnerable = false;
 }
 
 bool AJarl_ThirdPersonCharacter_CPP::SelectWeaponSlot(int32 SlotIndex)
