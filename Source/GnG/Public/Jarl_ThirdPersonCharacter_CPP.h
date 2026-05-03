@@ -133,6 +133,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
 	USoundBase* HitSoundB = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
+	USoundBase* DeathSound = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Weapons")
 	TSubclassOf<AProjectileSpawner> SpawnerClass;
@@ -181,6 +184,7 @@ protected:
 	float SlideInitialSpeed;
 	float SlideTargetEndSpeed;
 	float SlideElapsedTime;
+	float CameraHeight;
 
 	bool UpdateCameraRiverOverlap();
 	void UpdateSlide(float DeltaTime);
@@ -244,6 +248,7 @@ public:
 	 */
 	FTimerHandle WinTimerHandle; // Timer handle to delay the victory screen
 	FTimerHandle PostHitInvulnerabilityTimerHandle;
+	FTimerHandle DeathTimerHandle;
 	
 	UFUNCTION()
 	void ChangeSceene(); // Function to change to the victory screen after a delay

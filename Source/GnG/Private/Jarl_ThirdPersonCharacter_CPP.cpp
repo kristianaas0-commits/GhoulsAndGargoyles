@@ -79,11 +79,12 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	WeaponSelector = nullptr;
 	UnderwaterTimer = 0.0f;
 	bIsPostHitInvulnerable = false;
+	CameraHeight = 70.f;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(GetRootComponent());
 	FollowCamera->bUsePawnControlRotation = true;
-	FollowCamera->AddWorldOffset(FVector(0.f,0.f,70.f));
+	FollowCamera->AddWorldOffset(FVector(0.f,0.f,CameraHeight));
 	
 	// Prefer the Blueprint child so slot 1 uses the configured Lance asset instead of the raw C++ parent.
 	static ConstructorHelpers::FClassFinder<AProjectile_Base> LanceBlueprintClass(TEXT("/Game/Weapons/Projectiles/Lance"));
@@ -217,6 +218,12 @@ void AJarl_ThirdPersonCharacter_CPP::Tick(float DeltaTime)
 	}
 
 	UpdateSlide(DeltaTime);
+	
+	if (HitsRemaining <= 0 && CameraHeight > 0)
+	{
+		CameraHeight -= 1;
+		FollowCamera->AddWorldOffset(FVector(0.f,0.f,-2.f));
+	}
 }
 
 // Called to bind functionality to input
@@ -264,6 +271,8 @@ void AJarl_ThirdPersonCharacter_CPP::Move(const FInputActionValue& Value)
 
 void AJarl_ThirdPersonCharacter_CPP::Look(const FInputActionValue& Value)
 {
+	if (HitsRemaining <= 0) return;	
+	
 	FVector2D InputVector = Value.Get<FVector2D>();
 	
 	AddControllerYawInput(InputVector.X);
@@ -548,6 +557,15 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 {
 	if (DamageAmount <= 0.0f || HitsRemaining <= 0 || bIsPostHitInvulnerable)
 	{
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(
+				reinterpret_cast<uint64>(this) + 3,
+				2.0f,
+				FColor::Green,
+				FString::Printf(TEXT("Start Invulnerability")));
+		}
+		
 		return 0.0f;
 	}
 
@@ -596,7 +614,7 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 		if (GEngine)
 		{
 			GEngine->AddOnScreenDebugMessage(
-				reinterpret_cast<uint64>(this) + 4,
+				reinterpret_cast<uint64>(this) + 1,
 				2.0f,
 				FColor::Cyan,
 				FString::Printf(TEXT("Shields Remaining: %d"), ShieldsRemaining));
@@ -607,8 +625,12 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 
 	HitsRemaining = FMath::Max(0, HitsRemaining - 1);
 	UpdateHealthHUD();
-	PlayHitSound();
 	StartPostHitInvulnerability();
+	
+	if (HitsRemaining > 0)
+	{
+		PlayHitSound();
+	}
 
 	if (GEngine)
 	{
@@ -621,7 +643,14 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 
 	if (HitsRemaining <= 0)
 	{
-		HandlePlayerDeath();
+		UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
+		GetCharacterMovement()->DisableMovement();
+		GetWorldTimerManager().SetTimer(
+			DeathTimerHandle,
+			this,
+			&AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath,
+			1.5f,
+			false);
 	}
 
 	return 1.0f;
@@ -630,6 +659,14 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 void AJarl_ThirdPersonCharacter_CPP::ClearPostHitInvulnerability()
 {
 	bIsPostHitInvulnerable = false;
+	if (GEngine)
+	{
+		GEngine->AddOnScreenDebugMessage(
+			reinterpret_cast<uint64>(this) + 4,
+			2.0f,
+			FColor::Orange,
+			FString::Printf(TEXT("Remove Invulnerability")));
+	}
 }
 
 bool AJarl_ThirdPersonCharacter_CPP::SelectWeaponSlot(int32 SlotIndex)
@@ -751,14 +788,10 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateShieldHUD() const
 
 void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
 {
+	
+	
 	if (GEngine)
 	{
-		
-		UMyGameInstance*GI = Cast<UMyGameInstance>(GetGameInstance());
-		if (GI)
-		{
-			GI->EndGameTimer = GameTimer;
-		}
 		if (bTakesDamage)
 		{
 			UGameplayStatics::OpenLevel(this, FName("DeathScreen"));
