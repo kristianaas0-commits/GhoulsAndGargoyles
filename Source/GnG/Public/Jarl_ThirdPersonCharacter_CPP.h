@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Main player character class for the third-person version of the game.
 
 #pragma once
 
@@ -25,17 +25,18 @@ class GNG_API AJarl_ThirdPersonCharacter_CPP : public ACharacter
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
+	// Constructor that sets the player's default values and components.
 	AJarl_ThirdPersonCharacter_CPP();
 
 protected:
-	// Called when the game starts or when spawned
+	// Runs when the character enters the level.
 	virtual void BeginPlay() override;
 	
-	// Input functions
+	// Input handlers for movement and camera control.
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 	
+	// Input handlers for movement abilities and combat actions.
 	void StartJump();
 	void StopJump();
 	void Slide();
@@ -48,7 +49,7 @@ protected:
 	void SelectSecondaryWeapon();
 	void SelectThirdWeapon();
 	
-	// Controller
+	// Input references from the Enhanced Input system.
 	UPROPERTY(EditAnywhere, Category="Input")
 	UInputMappingContext* MappingContext;
 	
@@ -70,13 +71,15 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ShootAction;
 	
+	// Camera used for aiming and first-person style view control.
 	UPROPERTY(EditAnywhere,BlueprintReadOnly, Category="Input")
 	UCameraComponent* FollowCamera;
 	
-	// Variables
+	// Tracks whether movement input is currently being pressed.
 	UPROPERTY(EditAnywhere, Category="Movement")
 	bool bIsMoving;
 
+	// Slide tuning values.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Movement|Slide")
 	float SlideDuration = 0.55f;
 
@@ -107,12 +110,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Stats")
 	float Score;
 	
+	// Tracks how long the camera has stayed underwater.
 	UPROPERTY(EditAnywhere, Category="Water")
 	float UnderwaterTimer;
 	
+	// Time between each drowning damage tick.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Water")
 	float DrownSpeed = 1.0f;
 
+	// Health values.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stats")
 	int32 MaxHits;
 
@@ -128,6 +134,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stats")
 	float PostHitInvulnerabilityDuration = 0.3f;
 
+	// Sounds for taking damage and dying.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
 	USoundBase* HitSoundA = nullptr;
 
@@ -137,6 +144,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Audio")
 	USoundBase* DeathSound = nullptr;
 
+	// Projectile spawner setup.
 	UPROPERTY(EditAnywhere, Category = "Weapons")
 	TSubclassOf<AProjectileSpawner> SpawnerClass;
 
@@ -146,6 +154,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Weapons")
 	FName SpawnerAttachSocket = NAME_None;
 
+	// Default weapons for the three hotbar slots.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hotbar")
 	TSubclassOf<AProjectile_Base> DefaultPrimaryWeaponClass;
 
@@ -161,6 +170,7 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Hotbar")
 	AWeaponselector* WeaponSelector;
 
+	// Water state values for the camera.
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Water")
 	bool bIsCameraUnderRiver;
 
@@ -170,11 +180,13 @@ protected:
 	UPROPERTY()
 	AEnemyParent* EnemyParentInstance;
 	
-	// Movement settings
+	// Default movement values saved so they can be restored after sliding.
 	float DefaultGroundFriction;
 	float DefaultWalkSpeed;
 	float DefaultBraking;
 	float DefaultCrouchedWalkSpeed;
+
+	// Runtime slide state.
 	bool bIsSliding;
 	bool bIsSprinting;
 	bool bCanSlide;
@@ -184,8 +196,11 @@ protected:
 	float SlideInitialSpeed;
 	float SlideTargetEndSpeed;
 	float SlideElapsedTime;
+
+	// Camera offset used during the death animation.
 	float CameraHeight;
 
+	// Helper functions for water checks, HUD refreshes, and damage state.
 	bool UpdateCameraRiverOverlap();
 	void UpdateSlide(float DeltaTime);
 	void ResetSlideCooldown();
@@ -198,21 +213,24 @@ protected:
 	
 	
 public:	
-	// Called every frame
+	// Runs every frame.
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
+	// Connects actions and keys to their matching functions.
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
-	// Score function
+	// Updates the score and handles the win condition.
 	UFUNCTION(BlueprintCallable)
 	void UpdateScore(float Amount, bool bIsCyclops);
 
+	// Adds shields up to the maximum amount.
 	UFUNCTION(BlueprintCallable, Category = "Stats")
 	void AddShields(int32 ShieldAmount);
 
+	// Handles incoming damage, shield loss, and death.
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
+	// Hotbar helpers.
 	UFUNCTION(BlueprintCallable, Category = "Hotbar")
 	bool SelectWeaponSlot(int32 SlotIndex);
 
@@ -234,22 +252,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	bool IsDead() const { return HitsRemaining <= 0; }
 	
+	// Stores the current run time for the end screen.
 	UPROPERTY(BlueprintReadWrite, Category="Stats")
 	float GameTimer;
 	
 	UPROPERTY(EditAnywhere)
-	bool bTakesDamage; // Debug
+	bool bTakesDamage; // Debug flag for damage-related flow.
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stats")
 	bool bIsPostHitInvulnerable;
 	
-	/*
-	 * Victory
-	 */
-	FTimerHandle WinTimerHandle; // Timer handle to delay the victory screen
+	// Timers for win state, invulnerability, and death handling.
+	FTimerHandle WinTimerHandle; // Delays the win screen.
 	FTimerHandle PostHitInvulnerabilityTimerHandle;
 	FTimerHandle DeathTimerHandle;
 	
 	UFUNCTION()
-	void ChangeSceene(); // Function to change to the victory screen after a delay
+	void ChangeSceene(); // Opens the victory screen after the timer ends.
 };

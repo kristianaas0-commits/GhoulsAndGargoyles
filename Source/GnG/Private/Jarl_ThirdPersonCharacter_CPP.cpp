@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Implementation file for the player character.
 
 
 #include "Jarl_ThirdPersonCharacter_CPP.h"
@@ -33,6 +33,7 @@ class UEnhancedInputLocalPlayerSubsystem;
 
 namespace
 {
+	// Finds the health widget from the player's HUD so Blueprint UI functions can be called from C++.
 	UUserWidget* GetPlayerHealthWidget(const AJarl_ThirdPersonCharacter_CPP* Character)
 	{
 		if (!Character)
@@ -63,10 +64,9 @@ namespace
 	}
 }
 
-// Sets default values
+// Constructor that sets the character's default values.
 AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	bIsMoving = false;
@@ -81,12 +81,13 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	bIsPostHitInvulnerable = false;
 	CameraHeight = 70.f;
 
+	// Creates the follow camera and places it slightly above the character.
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(GetRootComponent());
 	FollowCamera->bUsePawnControlRotation = true;
 	FollowCamera->AddWorldOffset(FVector(0.f,0.f,CameraHeight));
 	
-	// Prefer the Blueprint child so slot 1 uses the configured Lance asset instead of the raw C++ parent.
+	// The Blueprint version is preferred so editor-set projectile values are used.
 	static ConstructorHelpers::FClassFinder<AProjectile_Base> LanceBlueprintClass(TEXT("/Game/Weapons/Projectiles/Lance"));
 	if (LanceBlueprintClass.Succeeded())
 	{
@@ -94,7 +95,7 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	}
 	else
 	{
-		// Fall back to the C++ class if the Blueprint asset path changes or cannot be found.
+		// Falls back to the C++ class if the Blueprint asset cannot be found.
 		DefaultPrimaryWeaponClass = ALanceCPP::StaticClass();
 	}
 
@@ -104,14 +105,14 @@ AJarl_ThirdPersonCharacter_CPP::AJarl_ThirdPersonCharacter_CPP()
 	CameraDepthUnderRiver = 0.0f;
 }
 
-// Called when the game starts or when spawned
+// Runs once when play begins.
 void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// Hide the full body mesh for the owning player in first-person view.
 	GetMesh()->SetOwnerNoSee(true);
 	
+	// Adds the input mapping context to the local player.
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
 		if (ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer())
@@ -123,7 +124,7 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 		}
 	}
 	
-	// Movement settings
+	// Saves the default movement values so sliding can temporarily override them.
 	DefaultGroundFriction = GetCharacterMovement()->GroundFriction;
 	DefaultWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
 	DefaultBraking = GetCharacterMovement()->BrakingDecelerationWalking;
@@ -137,10 +138,12 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 	SlideTargetEndSpeed = 0.0f;
 	SlideElapsedTime = 0.0f;
 	
+	// Makes sure the starting health and shield values stay inside valid limits.
 	HitsRemaining = FMath::Clamp(HitsRemaining, 0, MaxHits);
 	ShieldsRemaining = FMath::Clamp(ShieldsRemaining, 0, MaxShields);
 	RefreshVitalHUD();
 
+	// Spawns the projectile spawner and attaches it to the player.
 	if (SpawnerClass && !Spawner)
 	{
 		FActorSpawnParameters SpawnParameters;
@@ -163,6 +166,7 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 		}
 	}
 
+	// Spawns the weapon selector actor if one does not already exist.
 	if (!WeaponSelector)
 	{
 		FActorSpawnParameters SpawnParameters;
@@ -172,6 +176,7 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 		WeaponSelector = GetWorld()->SpawnActor<AWeaponselector>(SelectorClassToSpawn, GetActorLocation(), GetActorRotation(), SpawnParameters);
 	}
 
+	// Loads the default weapons into the three selectable hotbar slots.
 	if (WeaponSelector)
 	{
 		WeaponSelector->InitializeWeaponSelector(
@@ -181,6 +186,7 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 			DefaultTertiaryWeaponClass);
 	}
 	
+	// Connects every enemy's death event to the score function.
 	TArray<AActor*> FoundEnemies;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemyParent::StaticClass(), FoundEnemies);
 
@@ -193,17 +199,19 @@ void AJarl_ThirdPersonCharacter_CPP::BeginPlay()
 	}
 }
 
-// Called every frame
+// Runs every frame for underwater checks, sliding, and death camera movement.
 void AJarl_ThirdPersonCharacter_CPP::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// Checks whether the camera is inside river water.
 	UpdateCameraRiverOverlap();
 	
 	if (IsCameraUnderRiver())
 	{
 		UnderwaterTimer += DeltaTime;
 		
+		// Applies repeated damage while the camera stays underwater.
 		if (UnderwaterTimer >= DrownSpeed)
 		{
 			FDamageEvent DamageEvent;
@@ -217,8 +225,10 @@ void AJarl_ThirdPersonCharacter_CPP::Tick(float DeltaTime)
 		UnderwaterTimer = 0.0f;
 	}
 
+	// Updates the slide speed over time while a slide is active.
 	UpdateSlide(DeltaTime);
 	
+	// Lowers the camera after death for a simple death effect.
 	if (HitsRemaining <= 0 && CameraHeight > 0)
 	{
 		CameraHeight -= 1;
@@ -226,11 +236,12 @@ void AJarl_ThirdPersonCharacter_CPP::Tick(float DeltaTime)
 	}
 }
 
-// Called to bind functionality to input
+// Connects the player inputs to the character functions.
 void AJarl_ThirdPersonCharacter_CPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	// Binds Enhanced Input actions.
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AJarl_ThirdPersonCharacter_CPP::StartJump);
@@ -244,12 +255,14 @@ void AJarl_ThirdPersonCharacter_CPP::SetupPlayerInputComponent(UInputComponent* 
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &AJarl_ThirdPersonCharacter_CPP::PlayerShoot);
 	}
 
+	// Allows pause input to work even while the game is paused.
 	FInputKeyBinding& PauseBindingEscape = PlayerInputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::TogglePause);
 	PauseBindingEscape.bExecuteWhenPaused = true;
 
 	FInputKeyBinding& PauseBindingP = PlayerInputComponent->BindKey(EKeys::P, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::TogglePause);
 	PauseBindingP.bExecuteWhenPaused = true;
 
+	// Number keys change the selected weapon slot.
 	PlayerInputComponent->BindKey(EKeys::One, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectPrimaryWeapon);
 	PlayerInputComponent->BindKey(EKeys::Two, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectSecondaryWeapon);
 	PlayerInputComponent->BindKey(EKeys::Three, IE_Pressed, this, &AJarl_ThirdPersonCharacter_CPP::SelectThirdWeapon);
@@ -261,7 +274,7 @@ void AJarl_ThirdPersonCharacter_CPP::Move(const FInputActionValue& Value)
 	
 	bIsMoving = !ActionVector.IsNearlyZero();
 
-	// Ignore pitch when moving so forward always stays parallel to the ground.
+	// Only yaw is used so forward movement stays parallel to the ground.
 	const FRotator ControlRotation = Controller ? Controller->GetControlRotation() : GetActorRotation();
 	const FRotator YawRotation(0.f, ControlRotation.Yaw, 0.f);
 
@@ -271,6 +284,7 @@ void AJarl_ThirdPersonCharacter_CPP::Move(const FInputActionValue& Value)
 
 void AJarl_ThirdPersonCharacter_CPP::Look(const FInputActionValue& Value)
 {
+	// Looking is disabled after death.
 	if (HitsRemaining <= 0) return;	
 	
 	FVector2D InputVector = Value.Get<FVector2D>();
@@ -281,16 +295,19 @@ void AJarl_ThirdPersonCharacter_CPP::Look(const FInputActionValue& Value)
 
 void AJarl_ThirdPersonCharacter_CPP::StartJump()
 {
+	// Starts the normal Character jump.
 	Jump();
 }
 
 void AJarl_ThirdPersonCharacter_CPP::StopJump()
 {
+	// Stops the jump when the input is released.
 	StopJumping();
 }
 
 void AJarl_ThirdPersonCharacter_CPP::Slide()
 {
+	// Prevents a new slide if the player is already sliding or is on cooldown.
 	if (bIsSliding) return;
 	if (!bCanSlide) return;
 	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
@@ -302,12 +319,14 @@ void AJarl_ThirdPersonCharacter_CPP::Slide()
 	const float MinSlideStartSpeed = DefaultWalkSpeed * SlideMinStartSpeedFraction;
 	const float SprintSpeed = DefaultWalkSpeed * 1.8f;
 
+	// Requires enough speed before a slide can begin.
 	if (CurrentSpeed < MinSlideStartSpeed) return;
 
 	bIsSliding = true;
 	bCanSlide = false;
 	SlideElapsedTime = 0.0f;
 
+	// Crouching is used to give the slide a lower profile.
 	Crouch();
 
 	SlideDirection = HorizontalVelocity.GetSafeNormal();
@@ -319,12 +338,14 @@ void AJarl_ThirdPersonCharacter_CPP::Slide()
 		MaxSlideSpeed);
 	SlideTargetEndSpeed = FMath::Max(DefaultWalkSpeed * SlideEndSpeedMultiplier, DefaultCrouchedWalkSpeed);
 
+	// Overrides movement values to create the slide feel.
 	MoveComp->GroundFriction = SlideGroundFriction;
 	MoveComp->BrakingDecelerationWalking = SlideBrakingDeceleration;
 	MoveComp->MaxWalkSpeed = SlideInitialSpeed;
 	MoveComp->MaxWalkSpeedCrouched = SlideInitialSpeed;
 	MoveComp->Velocity = FVector(SlideDirection.X * SlideInitialSpeed, SlideDirection.Y * SlideInitialSpeed, MoveComp->Velocity.Z);
 
+	// One timer ends the slide and the other resets the slide cooldown.
 	GetWorldTimerManager().SetTimer(SlideTimerHandle, this, &AJarl_ThirdPersonCharacter_CPP::StopSlide, SlideDuration, false);
 	GetWorldTimerManager().SetTimer(SlideCooldownTimerHandle, this, &AJarl_ThirdPersonCharacter_CPP::ResetSlideCooldown, SlideCooldown, false);
 }
@@ -335,6 +356,7 @@ void AJarl_ThirdPersonCharacter_CPP::StopSlide()
 
 	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
 
+	// Restores standing height and normal movement settings.
 	UnCrouch();
 
 	if (bIsSprinting)
@@ -361,6 +383,7 @@ void AJarl_ThirdPersonCharacter_CPP::StopSlide()
 
 void AJarl_ThirdPersonCharacter_CPP::Sprint()
 {
+	// Sprinting only changes speed when not already in a slide.
 	bIsSprinting = true;
 
 	if (!bIsSliding)
@@ -371,6 +394,7 @@ void AJarl_ThirdPersonCharacter_CPP::Sprint()
 
 void AJarl_ThirdPersonCharacter_CPP::StopSprint()
 {
+	// Restores normal speed when sprint input ends.
 	bIsSprinting = false;
 
 	if (!bIsSliding)
@@ -386,6 +410,7 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateSlide(float DeltaTime)
 		return;
 	}
 
+	// Stops the slide if the player leaves the ground.
 	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
 	if (!MoveComp || !MoveComp->IsMovingOnGround())
 	{
@@ -393,6 +418,7 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateSlide(float DeltaTime)
 		return;
 	}
 
+	// Interpolates the slide speed from the starting burst to the ending speed.
 	SlideElapsedTime += DeltaTime;
 	const float SlideAlpha = SlideDuration > 0.0f ? FMath::Clamp(SlideElapsedTime / SlideDuration, 0.0f, 1.0f) : 1.0f;
 	const float CurrentSlideSpeed = FMath::InterpEaseOut(SlideInitialSpeed, SlideTargetEndSpeed, SlideAlpha, 4.0f);
@@ -409,11 +435,13 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateSlide(float DeltaTime)
 
 void AJarl_ThirdPersonCharacter_CPP::ResetSlideCooldown()
 {
+	// Allows sliding again after the cooldown finishes.
 	bCanSlide = true;
 }
 
 void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 {
+	// Cannot shoot if the projectile spawner was not created.
 	if (!Spawner)
 	{
 		return;
@@ -421,6 +449,7 @@ void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 			const FVector CameraLocation = FollowCamera->GetComponentLocation();
 			const FVector CameraRotation = FollowCamera->GetForwardVector();
 
+			// Spawns the projectile a bit in front of the camera to avoid immediate collision with the player.
 			const FVector SpawnLocation = FollowCamera->GetComponentLocation() + (FollowCamera->GetForwardVector() * 100.0f) + (FollowCamera->GetRightVector() * 30.f + FVector(0.f,0.f,-20.f));
 			const FVector TraceEnd = CameraLocation + (CameraRotation * 10000.0f);
 	
@@ -429,12 +458,13 @@ void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 			QueryParams.AddIgnoredActor(this);
 			QueryParams.AddIgnoredActor(Spawner);
 	
+			// Traces forward from the camera to find an aim point.
 			const bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult,CameraLocation,TraceEnd,ECC_Visibility,QueryParams);
 			
 			const FVector AimPoint = bHit ? HitResult.Location : TraceEnd;
 			const FRotator AimRotation = (AimPoint - SpawnLocation).Rotation();
 	
-			//plays a sound when its actually Fired
+			// Plays the throw sound only if the projectile was created successfully.
 			if (AProjectile_Base* Projectile = Spawner->Fire(SpawnLocation, AimRotation))
 			{
 				if (Projectile->ThrowSound)
@@ -446,6 +476,7 @@ void AJarl_ThirdPersonCharacter_CPP::PlayerShoot()
 
 void AJarl_ThirdPersonCharacter_CPP::TogglePause()
 {
+	// Toggles the global pause state.
 	if (!GetWorld())
 	{
 		return;
@@ -457,21 +488,25 @@ void AJarl_ThirdPersonCharacter_CPP::TogglePause()
 
 void AJarl_ThirdPersonCharacter_CPP::SelectPrimaryWeapon()
 {
+	// Selects hotbar slot 0.
 	SelectWeaponSlot(0);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::SelectSecondaryWeapon()
 {
+	// Selects hotbar slot 1.
 	SelectWeaponSlot(1);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::SelectThirdWeapon()
 {
+	// Selects hotbar slot 2.
 	SelectWeaponSlot(2);
 }
 
 void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 {
+	// Adds the received amount to the total score.
 	Score += Amount;
 
 	if (GEngine)
@@ -483,6 +518,7 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 			FString::Printf(TEXT("Amount: %.2f | Score: %.2f"), Amount, Score));
 	}
 
+	// Finds the score widget on the HUD and calls its Blueprint update function.
 	const APlayerController* PlayerController = Cast<APlayerController>(GetController());
 	if (PlayerController)
 	{
@@ -503,6 +539,7 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 						TArray<uint8> ParamBuffer;
 						ParamBuffer.SetNumZeroed(ChangeScoreFunction->ParmsSize);
 
+						// Writes the current score into the Blueprint function parameter buffer.
 						if (FProperty* ScoreParamProperty = ChangeScoreFunction->FindPropertyByName(TEXT("Score")))
 						{
 							if (FFloatProperty* FloatProperty = CastField<FFloatProperty>(ScoreParamProperty))
@@ -522,15 +559,18 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 		}
 	}
 
+	// A cyclops kill triggers the end-of-level flow.
 	if (bIsCyclops)
 	{
 		UMyGameInstance*GI = Cast<UMyGameInstance>(GetGameInstance());
+		// Stores final run values in the game instance for the end screen.
 		if (GI)
 		{
 			GI->EndGameTimer = GameTimer;
 			GI->EndScore = Score;
 		}
 		
+		// Delays the level change so the end event has time to play out.
 		GetWorldTimerManager().SetTimer(
 		WinTimerHandle,
 		this,
@@ -544,17 +584,20 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateScore(float Amount, bool bIsCyclops)
 
 void AJarl_ThirdPersonCharacter_CPP::AddShields(int32 ShieldAmount)
 {
+	// Ignores invalid shield pickups.
 	if (ShieldAmount <= 0)
 	{
 		return;
 	}
 
+	// Adds shields without going past the maximum.
 	ShieldsRemaining = FMath::Clamp(ShieldsRemaining + ShieldAmount, 0, MaxShields);
 	UpdateShieldHUD();
 }
 
 float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	// Ignores damage if the amount is invalid, the player is dead, or temporary invulnerability is active.
 	if (DamageAmount <= 0.0f || HitsRemaining <= 0 || bIsPostHitInvulnerable)
 	{
 		if (GEngine)
@@ -569,6 +612,7 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 		return 0.0f;
 	}
 
+	// Plays one of the available hit sounds at random.
 	auto PlayHitSound = [this]()
 	{
 		TArray<USoundBase*, TInlineAllocator<2>> AvailableHitSounds;
@@ -588,6 +632,7 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 		}
 	};
 
+	// Starts a short invulnerability window after being hit.
 	auto StartPostHitInvulnerability = [this]()
 	{
 		if (PostHitInvulnerabilityDuration <= 0.0f)
@@ -604,6 +649,7 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 			false);
 	};
 
+	// Shields absorb damage before health is reduced.
 	if (ShieldsRemaining > 0)
 	{
 		ShieldsRemaining = FMath::Max(0, ShieldsRemaining - 1);
@@ -623,6 +669,7 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 		return 1.0f;
 	}
 
+	// If no shields remain, health takes the damage instead.
 	HitsRemaining = FMath::Max(0, HitsRemaining - 1);
 	UpdateHealthHUD();
 	StartPostHitInvulnerability();
@@ -641,6 +688,7 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 			FString::Printf(TEXT("Hits Remaining: %d"), HitsRemaining));
 	}
 
+	// When health reaches zero, movement is disabled and the death flow starts.
 	if (HitsRemaining <= 0)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
@@ -658,6 +706,7 @@ float AJarl_ThirdPersonCharacter_CPP::TakeDamage(float DamageAmount, FDamageEven
 
 void AJarl_ThirdPersonCharacter_CPP::ClearPostHitInvulnerability()
 {
+	// Ends the post-hit invulnerability state.
 	bIsPostHitInvulnerable = false;
 	if (GEngine)
 	{
@@ -671,26 +720,31 @@ void AJarl_ThirdPersonCharacter_CPP::ClearPostHitInvulnerability()
 
 bool AJarl_ThirdPersonCharacter_CPP::SelectWeaponSlot(int32 SlotIndex)
 {
+	// Returns false if the weapon selector has not been created.
 	return WeaponSelector ? WeaponSelector->SelectWeaponSlot(SlotIndex) : false;
 }
 
 TSubclassOf<AProjectile_Base> AJarl_ThirdPersonCharacter_CPP::GetWeaponInSlot(int32 SlotIndex) const
 {
+	// Returns the weapon class in the chosen hotbar slot.
 	return WeaponSelector ? WeaponSelector->GetWeaponInSlot(SlotIndex) : nullptr;
 }
 
 int32 AJarl_ThirdPersonCharacter_CPP::GetActiveWeaponSlot() const
 {
+	// Returns INDEX_NONE if no selector exists yet.
 	return WeaponSelector ? WeaponSelector->GetActiveWeaponSlot() : INDEX_NONE;
 }
 
 void AJarl_ThirdPersonCharacter_CPP::ChangeSceene()
 {
+	// Opens the victory screen level.
 	UGameplayStatics::OpenLevel(this, FName("EndScreen"));
 }
 
 bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
 {
+	// Resets the water state before checking all river actors.
 	CameraDepthUnderRiver = 0.0f;
 	bIsCameraUnderRiver = false;
 
@@ -700,10 +754,12 @@ bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
 		return false;
 	}
 
+	// Uses the camera viewpoint, not the actor position, for underwater checks.
 	FVector CameraLocation;
 	FRotator CameraRotation;
 	PlayerController->GetPlayerViewPoint(CameraLocation, CameraRotation);
 
+	// Loops through river actors and checks whether the camera is inside water.
 	for (TActorIterator<AWaterBodyRiver> RiverIt(GetWorld()); RiverIt; ++RiverIt)
 	{
 		AWaterBodyRiver* River = *RiverIt;
@@ -728,6 +784,7 @@ bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
 		}
 
 		const FWaterBodyQueryResult& WaterInfo = QueryResult.GetValue();
+		// Stops on the first river that reports the camera as underwater.
 		if (WaterInfo.IsInWater() && !WaterInfo.IsInExclusionVolume())
 		{
 			bIsCameraUnderRiver = true;
@@ -748,12 +805,14 @@ bool AJarl_ThirdPersonCharacter_CPP::UpdateCameraRiverOverlap()
 
 void AJarl_ThirdPersonCharacter_CPP::RefreshVitalHUD() const
 {
+	// Refreshes both health and shield UI at the same time.
 	UpdateHealthHUD();
 	UpdateShieldHUD();
 }
 
 void AJarl_ThirdPersonCharacter_CPP::UpdateHealthHUD() const
 {
+	// Calls the Blueprint function that redraws the heart UI.
 	UUserWidget* HealthWidget = GetPlayerHealthWidget(this);
 	if (!HealthWidget)
 	{
@@ -771,6 +830,7 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateHealthHUD() const
 
 void AJarl_ThirdPersonCharacter_CPP::UpdateShieldHUD() const
 {
+	// Calls the Blueprint function that redraws the shield UI.
 	UUserWidget* HealthWidget = GetPlayerHealthWidget(this);
 	if (!HealthWidget)
 	{
@@ -788,8 +848,7 @@ void AJarl_ThirdPersonCharacter_CPP::UpdateShieldHUD() const
 
 void AJarl_ThirdPersonCharacter_CPP::HandlePlayerDeath()
 {
-	
-	
+	// Opens the death screen when the death timer finishes.
 	if (GEngine)
 	{
 		if (bTakesDamage)
