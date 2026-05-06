@@ -29,7 +29,8 @@ protected:
 		class AController* EventInstigator,
 		AActor* DamageCauser
 	) override;
-
+	
+	// Delay functions
 	UFUNCTION()
 	void DestroySelf(); // Function called after a delay, destroys self
 	
@@ -88,13 +89,13 @@ public:
 	UAnimSequence* DeathAnimation; // Death animation
 
 	UPROPERTY(EditAnywhere, Category="Death")
-	float DeathAnimationDuration; // Wait between the damage being applied and the actor being destroyed
+	float DeathAnimationDuration = 1.f; // Wait between the damage being applied and the actor being destroyed
 	
 	UPROPERTY(EditAnywhere, Category = "Death")
     USoundBase* DeathSound; // Death sound
 	
 	UPROPERTY(EditAnywhere, Category="Death")
-	bool bIsDead; // Bool 
+	bool bIsDead; // Bool to tell if the enemy is dead 
 
 	UPROPERTY(EditAnywhere, Category="Death")
     float KillingScore; // Score gained for killing the enemy

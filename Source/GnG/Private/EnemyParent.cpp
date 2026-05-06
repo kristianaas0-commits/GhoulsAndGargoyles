@@ -28,6 +28,7 @@ void AEnemyParent::BeginPlay()
 	CurrentHealth = DefaultHealth;
 }
 
+// Function that plays every time there is a damage update for the enemy
 float AEnemyParent::TakeDamage(
 	float DamageAmount,
 	const FDamageEvent& DamageEvent,
@@ -37,10 +38,10 @@ float AEnemyParent::TakeDamage(
 {
 	// All weapon projectiles call Unreal's TakeDamage pipeline, so this is the single place enemies lose health.
 	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	if (AppliedDamage <= 0.f)
+	
+	if (AppliedDamage <= 0.f)// Checks if the damage sent applied is zero
 	{
-		// Ignore zero-damage hits so harmless overlaps do not change enemy state.
-		return 0.f;
+		return 0.f; // Ignore zero-damage hits so harmless overlaps do not change enemy state.
 	}
 	
 	// Use the final applied damage value in case future damage modifiers change the incoming amount.
@@ -65,7 +66,7 @@ float AEnemyParent::TakeDamage(
 	;
 	
 	// Checking if dead
-	if (CurrentHealth <= 0 && bIsDead==false)
+	if (CurrentHealth <= 0 && !bIsDead)
 	{
 		bIsDead = true; 
 		
@@ -75,7 +76,7 @@ float AEnemyParent::TakeDamage(
 		
 		GetCharacterMovement()->DisableMovement(); // Stops the movement
 		
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Turns the collision off for the actor after the have been killed 
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision); // Turns the collision off for the actor after the enemy has been killed 
 		
 		// Play Death Sound
 		UGameplayStatics::PlaySoundAtLocation(
@@ -84,7 +85,10 @@ float AEnemyParent::TakeDamage(
 			GetActorLocation()
 			);
 		
-		GetMesh()->PlayAnimation(DeathAnimation, false); // Play Death Animation
+		if (DeathAnimation) // Checks that the enemy has an animation assigned
+		{
+			GetMesh()->PlayAnimation(DeathAnimation, false); // Play Death Animation
+		}
 		
         // Destroys the Actor after the animation is finished
 		GetWorldTimerManager().SetTimer(
@@ -126,7 +130,7 @@ void AEnemyParent::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 // Event broadcaster for updating the score
 void AEnemyParent::DeathEvent(float inScore, bool bInIsCyclopsValue)
 {
-	OnDeathForScore.Broadcast(inScore, bInIsCyclopsValue);
+	OnDeathForScore.Broadcast(inScore, bInIsCyclopsValue); // Broadcast the score to the player so that it can update the score
 	
 }
 
