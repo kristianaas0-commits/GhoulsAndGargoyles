@@ -22,24 +22,24 @@ AEnemyProjectile::AEnemyProjectile()
 	
 	CollisionSphere->InitSphereRadius(20.f);// Set the radius
 	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics); // Sets the type of collision
-	CollisionSphere->SetCollisionObjectType(ECC_GameTraceChannel1);
-	CollisionSphere->SetCollisionResponseToAllChannels(ECR_Block);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
-	CollisionSphere->SetGenerateOverlapEvents(true);
-	CollisionSphere->SetNotifyRigidBodyCollision(true);
+	CollisionSphere->SetCollisionObjectType(ECC_GameTraceChannel1); // Collision channel
+	CollisionSphere->SetCollisionResponseToAllChannels(ECR_Block); // Default collision type is to block the projectile
+	CollisionSphere->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block); // Collision with static object is blocked
+	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap); // Collision with pawns is overlap
+	CollisionSphere->SetGenerateOverlapEvents(true); // Used to signal overlap event for OnOverlapBegin
+	CollisionSphere->SetNotifyRigidBodyCollision(true); // Used to signal hit events for ProjectileHit
 	
 	
 	
 	// OnBeginOverlap Event
-	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemyProjectile::OnOverlapBegin);
-	CollisionSphere->OnComponentHit.AddDynamic(this, &AEnemyProjectile::OnProjectileHit);
-	ProjectileMovement->UpdatedComponent = Mesh;
+	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemyProjectile::OnOverlapBegin); // Overlap Event
+	CollisionSphere->OnComponentHit.AddDynamic(this, &AEnemyProjectile::OnProjectileHit); // Hit Event
+	ProjectileMovement->UpdatedComponent = Mesh; // Sets the root
 	
 	//Mesh
 	Mesh=CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
-	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	Mesh->SetGenerateOverlapEvents(false);
+	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision); // sets the collision for the mesh to no collision
+	Mesh->SetGenerateOverlapEvents(false); // Does not create overlap events
 	Mesh->SetupAttachment(RootComponent); // Assign the mesh to the Collision Sphere
 	
 }	

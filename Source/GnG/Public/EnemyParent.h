@@ -86,6 +86,9 @@ public:
 	void DeathEvent(float Score, bool bIsCyclopsValue); // Function to call Event broadcast
 	
 	UPROPERTY(EditAnywhere, Category="Death")
+	bool bIsCyclops; // Is used to end the game
+	
+	UPROPERTY(EditAnywhere, Category="Death")
 	UAnimSequence* DeathAnimation; // Death animation
 
 	UPROPERTY(EditAnywhere, Category="Death")
@@ -94,12 +97,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Death")
     USoundBase* DeathSound; // Death sound
 	
-	UPROPERTY(EditAnywhere, Category="Death")
+	UPROPERTY(BlueprintReadOnly, Category="Death")
 	bool bIsDead; // Bool to tell if the enemy is dead 
 
 	UPROPERTY(EditAnywhere, Category="Death")
     float KillingScore; // Score gained for killing the enemy
 	
-	UPROPERTY(EditAnywhere, Category="Death")
-	bool bIsCyclops; // Is used to end the game
 };
